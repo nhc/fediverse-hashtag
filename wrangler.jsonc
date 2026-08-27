@@ -9,12 +9,14 @@
 
   "vars": {
     // Sent on every outbound request so server admins can identify this
-    // collector and find the opt-out route. Never disguise it.
-    "COLLECTOR_USER_AGENT": "fediverse-hashtag-index/0.1 (+https://example.invalid/coverage; hashtag activity index, opt-out on that page)",
+    // collector and find the opt-out route. Never disguise it. The URL is set
+    // to the deployed coverage page after the first deploy, since that page is
+    // what explains to an admin what this is and how to stop it.
+    "COLLECTOR_USER_AGENT": "fediverse-hashtag-index/0.1 (+https://fediverse-hashtag-index.neil-charlton.workers.dev/coverage; public hashtag activity index, opt-out on that page; neil@bleepsystems.com)",
 
     // Contact address published on the coverage page, used for server and
-    // author opt-out requests.
-    "CONTACT": "set-me@example.invalid",
+    // author opt-out requests. Answered by a person.
+    "CONTACT": "neil@bleepsystems.com",
 
     // Requests the collector will make per tick.
     //
@@ -46,11 +48,8 @@
     {
       "binding": "DB",
       "database_name": "fediverse-hashtag-index",
-      // Create with:
-      //   npx wrangler d1 create fediverse-hashtag-index
-      // then paste the id here. Local development works without it via
-      //   npm run db:local
-      "database_id": "PLACEHOLDER_RUN_WRANGLER_D1_CREATE",
+      // Created 27 August 2026, region WEUR.
+      "database_id": "e39d2e52-cb54-43d3-89de-522a0f89304c",
       "migrations_dir": "./migrations"
     }
   ],
