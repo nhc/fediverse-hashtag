@@ -13,6 +13,7 @@
 
 import {
   coverageQuality,
+  effectivePollInterval,
   isCoverageComparable,
   minuteBucket,
   trend,
@@ -39,7 +40,7 @@ import { DEFAULT_MIN_AUTHORS, postsPerAuthor, rankTags, type DiscoveryOrder } fr
 import { ensureTagHistory } from './history';
 import { casefoldTag } from './normalise';
 import { isCollectable, isMonitored } from './registry';
-import type { Env } from './types';
+import { TIER_INTERVAL_SECONDS, type Env } from './types';
 
 /** The claim the whole service has to keep true. */
 export const STATEMENT =
@@ -172,7 +173,11 @@ export async function buildTagData(
     statement: STATEMENT,
     tracking: {
       tier: tag.tier,
-      poll_interval_seconds: { hot: 60, warm: 300, cold: 1800 }[tag.tier],
+      poll_interval_seconds: effectivePollInterval(
+        TIER_INTERVAL_SECONDS[tag.tier],
+        Number.parseInt(env.CRON_PERIOD_SECONDS, 10) || 60,
+      ),
+      tier_requests_interval_seconds: TIER_INTERVAL_SECONDS[tag.tier],
       first_seen: new Date(tag.first_seen_at * 1000).toISOString(),
       newly_registered: tag.first_seen_at === now,
     },

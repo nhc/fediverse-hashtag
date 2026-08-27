@@ -70,11 +70,13 @@ const MAX_WARM_TAGS = 40;
 /**
  * Ceiling on the tracked set.
  *
- * The tier arithmetic in docs/design.md supports roughly three hot tags, forty
- * warm and a hundred cold inside a 43 request budget. This is that total, and it
- * is what stops discovery from quietly outgrowing the request budget.
+ * The request budget would allow roughly 150, but the write budget is the tighter
+ * constraint and it is the one that costs money. At 150 tags the service would
+ * write 40 to 45 million rows a month against 50 million included, on a plan
+ * shared with other services. Fifty leaves real headroom and can be raised once
+ * a week of live figures exists to raise it against.
  */
-const MAX_TRACKED_TAGS = 150;
+const MAX_TRACKED_TAGS = 50;
 
 export default {
   async scheduled(_controller: ScheduledController, env: Env, _ctx: ExecutionContext): Promise<void> {

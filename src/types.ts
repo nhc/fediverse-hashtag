@@ -15,6 +15,7 @@ export interface Env {
   RATELIMIT_FLOOR: string;
   RETENTION_HOURS: string;
   MAX_CANDIDATE_WRITES_PER_TICK: string;
+  CRON_PERIOD_SECONDS: string;
 
   /**
    * Secret. Salts the author hash, so distinct-author counts work without this

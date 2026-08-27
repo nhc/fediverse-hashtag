@@ -93,14 +93,23 @@ not be made honestly, not that activity was flat.
 
 ## Latency
 
-The collector polls once a minute. A post typically appears in the index within
-one to two minutes of reaching a monitored server, and reaching that server may
-itself have taken time. The five-minute window is therefore near-real-time rather
-than live, and the last-updated timestamp on every page is the accurate figure.
+The collector polls every five minutes. A post typically appears in the index
+within five to seven minutes of reaching a monitored server, and reaching that
+server may itself have taken time.
 
-Busy hashtags are polled every minute. Quieter ones are polled every five or
-thirty minutes, so their five-minute window can lag. Each tag page states its own
-polling frequency.
+So the five-minute window holds roughly one collection round. Read the
+last-updated timestamp on every page rather than the window label: it is the
+figure that tells you how current the numbers are.
+
+That cadence is a cost decision, not a technical limit. Polling every minute
+works and would cut the delay to one or two minutes, at five times the database
+writes, on infrastructure shared with other things.
+
+Busy hashtags are polled every round. Quieter ones are polled every thirty
+minutes, so their five-minute window is often empty simply because the tag was
+not due. Each tag page states its own polling interval, and that figure accounts
+for how often the collector actually runs rather than only what the tag's tier
+asks for.
 
 ## Hashtags not yet tracked
 

@@ -147,9 +147,12 @@ Writes are the only allowance this service uses a meaningful share of: roughly
 480,000 rows a day at fourteen tracked tags, about 15 million a month against the
 50 million included on Workers Paid.
 
-The figure scales with the tracked set, which is capped at 150. At that ceiling
-expect 40 to 45 million a month, which is inside the allowance but not by much.
-Two dials, in the order to reach for them:
+Those figures are for a one-minute cron. The deployed cadence is five minutes, so
+divide by five: roughly 96,000 rows a day, about 3 million a month, 6% of the
+allowance.
+
+The figure scales with the tracked set, capped at 50. Two dials, in the order to
+reach for them:
 
 1. `MAX_CANDIDATE_WRITES_PER_TICK`, default 60. Setting it to 0 turns discovery
    off entirely and takes off up to 86,000 writes a day.
@@ -163,5 +166,6 @@ that scales with tags rather than with polls.
 - No admin endpoint for author opt-out, as above.
 - No alerting. Failures are visible on `/status` and in `wrangler tail`, and
   nothing tells you to go and look.
-- Collection is currently **paused**: `triggers.crons` is an empty list in
-  `wrangler.jsonc`. Restore `["* * * * *"]` and deploy to resume.
+- The cron runs every five minutes, not every minute, to keep writes to about a
+  fifth. If you change it, change `CRON_PERIOD_SECONDS` to match, or the service
+  will publish a polling interval it does not honour.

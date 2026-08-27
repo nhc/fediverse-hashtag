@@ -55,7 +55,7 @@ and where the tests are.
 
 ```
                     ┌─────────────────┐
-   every minute     │ instance        │  host, software, capability,
+   every 5 minutes  │ instance        │  host, software, capability,
    cron ───────────▶│ registry        │  health, opt-out, mask bit
                     └────────┬────────┘
                              ▼

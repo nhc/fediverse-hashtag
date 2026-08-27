@@ -43,6 +43,14 @@
     // Hours to keep observation rows. One more than the longest window.
     "RETENTION_HOURS": "25",
 
+    // How often the cron actually fires. Must match triggers.crons below.
+    //
+    // A tag's tier asks for a polling interval, but nothing can be polled more
+    // often than the cron runs, so the interval this service publishes is the
+    // larger of the two. Without this the tag page would claim a hot tag is
+    // polled every 60 seconds while the cron fired every 300.
+    "CRON_PERIOD_SECONDS": "300",
+
     // Discovery candidate rows written per tick.
     //
     // Recording every co-occurring tag would be several hundred writes a
@@ -65,13 +73,15 @@
   ],
 
   "triggers": {
-    // PAUSED 27 August 2026 at the operator's request, pending a review of the
-    // write budget. An empty list removes the schedule on deploy, so nothing is
-    // collected and no requests are made to any third-party server. The Worker
-    // still serves its pages and API, which are read-only.
+    // Every five minutes rather than every minute, chosen deliberately to keep
+    // the write budget to roughly a fifth: about 3 million rows a month against
+    // the 50 million included, on a plan shared with other services.
     //
-    // To resume, restore: ["* * * * *"]
-    "crons": []
+    // This sets the floor on collection latency, so the five-minute window holds
+    // about one tick and a post appears within five to seven minutes of reaching
+    // a monitored server. CRON_PERIOD_SECONDS below must match, because the
+    // service publishes its own polling interval and that figure has to be true.
+    "crons": ["*/5 * * * *"]
   },
 
   "observability": {

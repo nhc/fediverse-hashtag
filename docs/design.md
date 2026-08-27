@@ -34,7 +34,7 @@ it. See [the probe findings](probe-2026-08-27.md) for the measurements.
 
 ```
                     ┌─────────────────┐
-   every minute     │ instance        │  host, software, capability,
+   every 5 minutes  │ instance        │  host, software, capability,
    cron ───────────▶│ registry        │  health, opt-out, mask bit
                     └────────┬────────┘
                              │  healthy, opted-in, capability=timeline
@@ -110,9 +110,15 @@ The Mastodon side is generous. Every probed host reported 300 requests per five
 minutes per IP, which is sixty a minute per instance. The index will never
 approach that.
 
-The Cloudflare side is the real ceiling. On the free plan a Worker gets 50
-external subrequests per invocation, and everything a tick does counts towards
-the same 50, maintenance included.
+The Cloudflare side is the real ceiling. A Worker gets 50 external subrequests per
+invocation on the free plan, and everything a tick does counts towards the same
+50, maintenance included. That per-tick cap is what MAX_REQUESTS_PER_TICK is
+sized against, and it is independent of how often the tick fires.
+
+How often it fires is a separate decision, made on the write budget rather than
+the request budget. The cron runs every five minutes, which is a fifth of the
+writes of a one-minute cadence and a fifth of the freshness. See
+[what the platform actually costs](#what-the-platform-actually-costs).
 
 A tick can also probe one instance, which costs up to five requests: robots.txt,
 nodeinfo discovery, the nodeinfo document, a hashtag timeline and the tag

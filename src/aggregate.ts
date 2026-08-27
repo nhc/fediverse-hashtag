@@ -155,3 +155,16 @@ export function isCoverageComparable(input: ComparabilityInput): boolean {
 export function minuteBucket(unixSeconds: number): number {
   return Math.floor(unixSeconds / 60);
 }
+
+/**
+ * The polling interval this service can honestly claim for a tag.
+ *
+ * A tier asks for an interval, but nothing is polled more often than the cron
+ * fires, so the real interval is the larger of the two. Published rather than
+ * the tier's figure, because a tag page claiming a 60 second interval while the
+ * cron runs every 300 would be stating something untrue about the freshness of
+ * the number beside it.
+ */
+export function effectivePollInterval(tierSeconds: number, cronPeriodSeconds: number): number {
+  return Math.max(tierSeconds, Math.max(1, cronPeriodSeconds));
+}

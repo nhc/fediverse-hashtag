@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   coverageQuality,
+  effectivePollInterval,
   isCoverageComparable,
   median,
   medianInstancesPerPost,
@@ -149,5 +150,26 @@ describe('minuteBucket', () => {
   it('floors to the minute', () => {
     expect(minuteBucket(1_787_788_859)).toBe(minuteBucket(1_787_788_800));
     expect(minuteBucket(1_787_788_860)).toBe(minuteBucket(1_787_788_800) + 1);
+  });
+});
+
+describe('effectivePollInterval', () => {
+  it('reports the cron cadence when a tier asks for something faster', () => {
+    // The honesty case. A hot tag asks for 60 seconds, but a cron firing every
+    // 300 cannot deliver it, and the tag page must not claim otherwise.
+    expect(effectivePollInterval(60, 300)).toBe(300);
+  });
+
+  it('reports the tier interval when it is the slower of the two', () => {
+    expect(effectivePollInterval(1800, 300)).toBe(1800);
+  });
+
+  it('agrees with the tier when the cron is fast enough', () => {
+    expect(effectivePollInterval(300, 60)).toBe(300);
+  });
+
+  it('never returns zero, whatever it is handed', () => {
+    expect(effectivePollInterval(0, 0)).toBe(1);
+    expect(effectivePollInterval(-5, -5)).toBe(1);
   });
 });
