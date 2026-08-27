@@ -587,7 +587,13 @@ export async function healthSummary(
               i.consecutive_failures  AS consecutiveFailures,
               i.backoff_until         AS backoffUntil,
               COUNT(p.id)                                          AS polls,
-              SUM(CASE WHEN p.status = 200 THEN 0 ELSE 1 END)      AS failures,
+              -- The p.id guard matters. This is a LEFT JOIN, so a server with
+              -- no polls in the window has a NULL status, and comparing NULL
+              -- to 200 is not true, which would score every quiet server a
+              -- failure.
+              SUM(CASE WHEN p.id IS NULL     THEN 0
+                       WHEN p.status = 200   THEN 0
+                       ELSE 1 END)                                 AS failures,
               AVG(p.latency_ms)                                    AS avgLatency,
               MIN(p.ratelimit_remaining)                           AS minRateLimit
          FROM instance i
@@ -657,6 +663,33 @@ export async function loadTagHistory(
     .bind(tagId)
     .all<{ host: string; day: number; uses: number; accounts: number }>();
   return results ?? [];
+}
+
+/**
+ * Posts observed per tag in the last hour, for deciding polling tiers.
+ *
+ * Returned for every tracked tag including the silent ones, because a tag that
+ * has gone quiet needs demoting as much as a busy one needs promoting.
+ */
+export async function postsPerHourByTag(
+  db: D1Database,
+  now: number,
+): Promise<Map<number, number>> {
+  const { results } = await db
+    .prepare(
+      `SELECT t.id AS id, COUNT(o.uri) AS posts
+         FROM tag t
+         LEFT JOIN observation o
+                ON o.tag_id = t.id AND o.created_at >= ?1 AND o.is_boost = 0
+        WHERE t.blocked = 0
+        GROUP BY t.id`,
+    )
+    .bind(now - 3600)
+    .all<{ id: number; posts: number }>();
+
+  const counts = new Map<number, number>();
+  for (const row of results ?? []) counts.set(row.id, row.posts);
+  return counts;
 }
 
 export interface SweepResult {

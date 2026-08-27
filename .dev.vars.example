@@ -1,0 +1,5 @@
+# Salts the author hash, so distinct-author counts work without this service
+# holding a list of handles. Any long random string. Rotating it discontinues
+# author counts, so pick one and keep it.
+#   openssl rand -hex 32
+AUTHOR_SALT=replace-me-with-a-long-random-string

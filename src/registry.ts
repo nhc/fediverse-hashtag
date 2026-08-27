@@ -180,6 +180,23 @@ export function healthAfterPoll(input: HealthInput): HealthUpdate {
   };
 }
 
+/**
+ * Whether this instance is part of the monitored set.
+ *
+ * Distinct from isCollectable, and the distinction matters for every coverage
+ * figure. Monitored means the index intends to poll this server: it is opted in,
+ * it serves timelines, and it has a mask bit. Collectable means it can be polled
+ * *this tick*, which a temporary backoff can prevent.
+ *
+ * Coverage compares a count of instances reporting over a window against the
+ * monitored total. Using the collectable set as the denominator mixes a snapshot
+ * with a window, and a host that answered earlier and is paused now makes
+ * reporting exceed monitored, which is incoherent on its face.
+ */
+export function isMonitored(instance: InstanceRow): boolean {
+  return instance.opt_out === 0 && instance.capability === 'timeline' && instance.bit !== null;
+}
+
 /** Whether this instance should be polled for hashtag timelines right now. */
 export function isCollectable(instance: InstanceRow, now: number): boolean {
   if (instance.opt_out !== 0) return false;

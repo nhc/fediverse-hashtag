@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   MAX_INSTANCES,
   classifyProbe,
+  isMonitored,
   healthAfterPoll,
   isActivityPubSoftware,
   isCollectable,
@@ -214,5 +215,30 @@ describe('nextFreeBit', () => {
   it('stays inside what a mask can survive being read back as a number', () => {
     expect(MAX_INSTANCES).toBeLessThanOrEqual(52);
     expect(2 ** MAX_INSTANCES).toBeLessThan(Number.MAX_SAFE_INTEGER);
+  });
+});
+
+describe('isMonitored', () => {
+  it('counts an opted-in timeline server that is merely paused', () => {
+    // The distinction that keeps coverage coherent. A host paused by backoff is
+    // still monitored, so a count of instances reporting over a window can
+    // never exceed the monitored total.
+    const paused = instance({ backoff_until: NOW + 300 });
+    expect(isCollectable(paused, NOW)).toBe(false);
+    expect(isMonitored(paused)).toBe(true);
+  });
+
+  it('excludes an opted-out server', () => {
+    expect(isMonitored(instance({ opt_out: 1 }))).toBe(false);
+  });
+
+  it('excludes a server that does not serve timelines', () => {
+    // tags_only is not degraded, it is differently capable, and it contributes
+    // no observations, so it is not part of the coverage denominator.
+    expect(isMonitored(instance({ capability: 'tags_only' }))).toBe(false);
+  });
+
+  it('excludes a server with no mask bit, whose coverage could not be recorded', () => {
+    expect(isMonitored(instance({ bit: null }))).toBe(false);
   });
 });

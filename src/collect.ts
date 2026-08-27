@@ -70,7 +70,7 @@ export function configFromEnv(env: Env): CollectConfig {
   return {
     userAgent: env.COLLECTOR_USER_AGENT,
     salt: env.AUTHOR_SALT,
-    maxRequests: number(env.MAX_REQUESTS_PER_TICK, 48),
+    maxRequests: number(env.MAX_REQUESTS_PER_TICK, 43),
     maxParseBytes: number(env.MAX_PARSE_BYTES_PER_TICK, 2_000_000),
     maxTagsPerBatch: number(env.MAX_TAGS_PER_BATCH, 4),
     rateLimitFloor: number(env.RATELIMIT_FLOOR, 30),

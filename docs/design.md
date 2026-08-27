@@ -43,7 +43,7 @@ it. See [the probe findings](probe-2026-08-27.md) for the measurements.
                     │ scheduler       │  picks tag/instance pairs due now,
                     │                 │  batches quiet tags with any[]
                     └────────┬────────┘
-                             │  <= 48 requests per tick
+                             │  <= 43 requests per tick
                              ▼
                     ┌─────────────────┐   GET /api/v1/timelines/tag/:t
                     │ collector       │──────────  ?any[]=...&min_id=cursor
@@ -111,9 +111,14 @@ minutes per IP, which is sixty a minute per instance. The index will never
 approach that.
 
 The Cloudflare side is the real ceiling. On the free plan a Worker gets 50
-external subrequests per invocation, so a one-minute cron allows 50 upstream
-requests a minute. The scheduler targets 48 and keeps two in reserve for probes
-and retries.
+external subrequests per invocation, and everything a tick does counts towards
+the same 50, maintenance included.
+
+A tick can also probe one instance, which costs up to five requests: robots.txt,
+nodeinfo discovery, the nodeinfo document, a hashtag timeline and the tag
+metadata. So the sum is 43 for collection, 5 for a probe and 2 spare. Sizing the
+collector at 48 and calling the rest reserve would breach the cap on any tick
+that probed.
 
 ### Tiered, adaptive polling
 
@@ -126,7 +131,7 @@ their frequency:
 | `warm` | 5 minutes | 4 per request | 0.4 requests |
 | `cold` | 30 minutes | 4 per request | 0.07 requests |
 
-Within a 48 request per minute budget that supports roughly three hot tags,
+Within a 43 request per minute budget that supports roughly three hot tags,
 forty warm tags and a hundred cold ones at the same time. Promotion and demotion
 are driven by observed post rate and by how recently a human asked about the
 tag, so the tags people actually look at are the ones kept fresh.
@@ -315,7 +320,7 @@ That measurement makes the platform question much less interesting than expected
 |---|---|---|---|
 | Requests | ~44k/month cron, plus web traffic | 10M/month | under 1% |
 | CPU | 0.1M to 0.56M ms/month | 30M ms/month | under 2% |
-| CPU per cron tick | 2.3 ms typical, 12.9 ms worst case | 30,000 ms | negligible |
+| CPU per cron tick | 2.3 ms typical, 11.5 ms worst case | 30,000 ms | negligible |
 | D1 rows written | ~720k/month | 50M/month | 1.5% |
 | D1 rows read | indexed window queries | 25B/month | negligible |
 | D1 storage | under 1 GB | 5 GB | under 20% |
@@ -327,7 +332,7 @@ nothing to the five dollar subscription.
 
 The binding free-tier limit is 10 ms of CPU per cron trigger. A typical tick
 costs 2.3 ms, because `min_id` cursors mean most polls return little or nothing.
-A tick where every one of 48 polls returns a full 40 statuses costs 12.9 ms, and
+A tick where every one of 43 polls returns a full 40 statuses costs 11.5 ms, and
 that tick would be terminated.
 
 The fix is a per-tick parse budget rather than a smaller design. The collector
@@ -339,7 +344,7 @@ limit is satisfied:
 | Free-tier limit | Value | Needed |
 |---|---|---|
 | CPU per cron trigger | 10 ms | 2.3 ms typical, capped below 10 ms |
-| External subrequests per invocation | 50 | 48 |
+| External subrequests per invocation | 50 | 43 collect + 5 probe |
 | D1 rows written | 100,000/day | ~24,000/day |
 | Requests | 100,000/day | 1,440 cron, plus web traffic |
 

@@ -16,9 +16,14 @@
     // author opt-out requests.
     "CONTACT": "set-me@example.invalid",
 
-    // Requests the collector will make per tick. Two below the Workers free
-    // limit of 50 external subrequests, leaving headroom for probes.
-    "MAX_REQUESTS_PER_TICK": "48",
+    // Requests the collector will make per tick.
+    //
+    // The Workers free tier allows 50 external subrequests per invocation, and
+    // a tick can also run one instance probe costing up to 5 requests on top of
+    // collection. So: 43 collect + 5 probe + 2 spare = 50. Raise this on
+    // Workers Paid, where the ceiling is 10,000, but keep the probe allowance
+    // in the sum.
+    "MAX_REQUESTS_PER_TICK": "43",
 
     // Bytes of JSON the collector will parse per tick before deferring the
     // rest to the next one. Cursors make deferral safe. 2 MB keeps a tick

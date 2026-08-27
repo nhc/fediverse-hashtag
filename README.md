@@ -15,9 +15,9 @@ healthy, and when the last successful update happened.
 
 ## Status
 
-Design stage. Nothing is built yet. The documents below are the design, and the
-capability probe behind them has been run against real servers rather than
-assumed.
+Working. The collector runs, the API and web pages serve, and 135 unit tests plus
+9 live tests against real servers pass. Not yet deployed. See
+[OPERATING.md](OPERATING.md) to put it somewhere.
 
 | Document | What it covers |
 |---|---|
@@ -26,8 +26,31 @@ assumed.
 | [docs/privacy.md](docs/privacy.md) | Data stored, retention, deletion, opt-out |
 | [docs/probe-2026-08-27.md](docs/probe-2026-08-27.md) | What the APIs actually do, measured |
 | [docs/decisions.md](docs/decisions.md) | Decisions, costs, and what would change them |
+| [OPERATING.md](OPERATING.md) | Deploying and running it |
 
-## How it will work
+## The code
+
+```
+src/scheduler.ts   what to poll this tick, and the tier policy. Pure.
+src/mastodon.ts    the API client. URL building and header parsing are pure.
+src/normalise.ts   statuses in, the few fields we store out. Pure.
+src/registry.ts    what each server is and whether to ask it now. Pure.
+src/aggregate.ts   windows, trends, coverage, and when to refuse to publish. Pure.
+src/robots.ts      robots.txt, honoured as an opt-out route. Pure.
+src/collect.ts     one tick: fetch, merge in memory, write once.
+src/probe.ts       asking each server what it allows. Never inferring it.
+src/history.ts     daily counters, so a cold tag search answers immediately.
+src/db.ts          every SQL statement in the service.
+src/api.ts         the JSON API. No count travels without its provenance.
+src/ui.ts          four server-rendered pages.
+src/index.ts       the Worker: cron collects, fetch serves.
+```
+
+The modules marked pure have no dependencies and no platform assumptions, so
+they unit test in Node with no Worker harness. That is where the judgement lives
+and where the tests are.
+
+## How it works
 
 ```
                     ┌─────────────────┐
@@ -37,7 +60,7 @@ assumed.
                              ▼
                     ┌─────────────────┐  picks tag/instance pairs due now,
                     │ scheduler       │  batches quiet tags with any[]
-                    └────────┬────────┘  <= 48 requests per tick
+                    └────────┬────────┘  <= 43 requests per tick
                              ▼
                     ┌─────────────────┐  GET /api/v1/timelines/tag/:t
                     │ collector       │  ?any[]=…&min_id=cursor
@@ -95,16 +118,32 @@ Records expire after 25 hours. Servers can opt out, and so can authors. See
 
 ## Running it
 
-Not yet runnable. When it is, the shape will follow the sibling `mastodon/`
-project: `wrangler dev` for local work, D1 migrations under `migrations/`,
-`vitest` for tests and a separate live probe suite for checks against real
-servers.
+```
+npm install
+cp .dev.vars.example .dev.vars     # then put a real salt in it
+npm run db:local                   # apply migrations to a local D1
+npm run dev                        # wrangler dev --test-scheduled
+```
 
-The capability probe can be run today:
+Trigger a collection tick by hand:
 
 ```
-zsh scripts/probe.sh
+curl "http://localhost:8788/__scheduled?cron=*+*+*+*+*"
 ```
+
+Instances start unprobed, and one is probed per tick, so the index takes about
+ten minutes of ticks to warm up. That is deliberate: nothing is collected from a
+server before this deployment has asked it directly.
+
+```
+npm test          # 135 unit tests, no network
+npm run probe     # 9 live tests against real servers
+npm run typecheck
+```
+
+`npm run probe` is the one that matters over time. The design rests on several
+claims about what these APIs do, and it checks each of them against live
+servers rather than against the notes in `docs/`.
 
 ## Cost
 
