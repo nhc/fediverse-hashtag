@@ -87,18 +87,22 @@ uri and permalink. Storage is not the binding constraint, so this is acceptable.
 ## 6. `seen_mask` rather than per-instance observation rows
 *27 August 2026*
 
-**Decision.** A 63-bit integer bitmask recording which monitored instances
-reported each post.
+**Decision.** An integer bitmask recording which monitored instances reported
+each post, capped at 52 bits.
 
 **Why.** Separate rows per instance multiply write volume by the instance count.
 The mask holds the same information in one column, merged with a bitwise OR.
 Because one cron tick polls many instances, their views are merged in memory
 before writing, so a new post normally costs one write rather than eight.
 
-**Cost.** A hard ceiling of 63 monitored instances, and no per-instance timestamp
-for when each one saw a post. Neither matters at MVP scale.
+**Cost.** A hard ceiling of 52 monitored instances, and no per-instance timestamp
+for when each one saw a post. The ceiling is JavaScript's, not SQLite's: D1
+returns integers as numbers, exact only to 2^53, so a wider mask would be read
+back corrupted. The OR runs in SQL and the in-memory merge uses BigInt.
 
-**Revisit if.** More than about fifty instances are monitored.
+**Revisit if.** More than about forty instances are monitored. Past that the mask
+needs splitting across two columns, or coverage needs a different
+representation.
 
 ## 7. Salted author hashes rather than handles
 *27 August 2026*

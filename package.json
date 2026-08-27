@@ -1,0 +1,26 @@
+{
+  "name": "fediverse-hashtag-index",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Near-real-time index of public hashtag activity observed across monitored Fediverse servers",
+  "scripts": {
+    "dev": "wrangler dev --test-scheduled",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "types": "wrangler types",
+    "db:local": "wrangler d1 migrations apply fediverse-hashtag-index --local",
+    "db:remote": "wrangler d1 migrations apply fediverse-hashtag-index --remote",
+    "tail": "wrangler tail",
+    "probe": "vitest run --config vitest.live.config.ts",
+    "probe:sh": "zsh scripts/probe.sh"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260820.1",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0",
+    "wrangler": "^4.125.0"
+  }
+}

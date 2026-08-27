@@ -1,0 +1,63 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "fediverse-hashtag-index",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-20",
+
+  "workers_dev": true,
+  "preview_urls": false,
+
+  "vars": {
+    // Sent on every outbound request so server admins can identify this
+    // collector and find the opt-out route. Never disguise it.
+    "COLLECTOR_USER_AGENT": "fediverse-hashtag-index/0.1 (+https://example.invalid/coverage; hashtag activity index, opt-out on that page)",
+
+    // Contact address published on the coverage page, used for server and
+    // author opt-out requests.
+    "CONTACT": "set-me@example.invalid",
+
+    // Requests the collector will make per tick. Two below the Workers free
+    // limit of 50 external subrequests, leaving headroom for probes.
+    "MAX_REQUESTS_PER_TICK": "48",
+
+    // Bytes of JSON the collector will parse per tick before deferring the
+    // rest to the next one. Cursors make deferral safe. 2 MB keeps a tick
+    // inside the free tier's 10 ms of CPU; raise it well past any real tick
+    // on Workers Paid. See docs/design.md.
+    "MAX_PARSE_BYTES_PER_TICK": "2000000",
+
+    // Tags polled in one batched request via any[]. The limit of 40 statuses
+    // is shared across the batch, so a busy tag crowds out a quiet one.
+    "MAX_TAGS_PER_BATCH": "4",
+
+    // Pause a host when its reported rate-limit headroom drops below this.
+    "RATELIMIT_FLOOR": "30",
+
+    // Hours to keep observation rows. One more than the longest window.
+    "RETENTION_HOURS": "25"
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "fediverse-hashtag-index",
+      // Create with:
+      //   npx wrangler d1 create fediverse-hashtag-index
+      // then paste the id here. Local development works without it via
+      //   npm run db:local
+      "database_id": "PLACEHOLDER_RUN_WRANGLER_D1_CREATE",
+      "migrations_dir": "./migrations"
+    }
+  ],
+
+  "triggers": {
+    // Every minute. This sets the floor on collection latency, and the
+    // five-minute window is near-real-time rather than live because of it.
+    "crons": ["* * * * *"]
+  },
+
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  }
+}

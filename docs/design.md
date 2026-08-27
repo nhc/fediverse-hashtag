@@ -193,7 +193,7 @@ CREATE TABLE instance (
   software             TEXT,
   version              TEXT,
   capability           TEXT    NOT NULL DEFAULT 'unknown',
-  bit                  INTEGER UNIQUE,       -- 0..62, position in seen_mask
+  bit                  INTEGER UNIQUE,       -- 0..51, position in seen_mask
   opt_out              INTEGER NOT NULL DEFAULT 0,
   opt_out_reason       TEXT,
   probed_at            INTEGER,
@@ -273,10 +273,15 @@ rotated without accepting a discontinuity in author counts.
 
 **`seen_mask` rather than an observations-per-instance table.** Recording which
 of eight instances saw each post as separate rows multiplies write volume by
-eight. A 63-bit mask holds the same information in one column that can be
-merged in place with a bitwise OR. Because a single cron tick polls many
-instances, their views are merged in memory first, so a new post normally costs
-one write rather than one per instance.
+eight. A bitmask holds the same information in one column that can be merged in
+place with a bitwise OR. Because a single cron tick polls many instances, their
+views are merged in memory first, so a new post normally costs one write rather
+than one per instance.
+
+The mask is capped at 52 bits, and the reason is JavaScript rather than SQLite.
+D1 returns integers as numbers, which are exact only to 2^53, so a wider mask
+would come back corrupted and take every coverage figure with it. The OR itself
+runs in SQL, and the in-memory merge uses BigInt.
 
 **Denormalised, so a post with three tracked tags occupies three rows.** The
 alternative is a `post` table with a `post_tag` join, which saves a little
