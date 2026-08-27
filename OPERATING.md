@@ -37,9 +37,15 @@ salt costs you a day of author counts and nothing else.
 
 ## What it costs
 
-Under two per cent of every Workers Paid included allowance, so nothing beyond
-the five dollar subscription. It also fits the free tier, subject to the parse
-budget below. Figures and workings are in
+Nothing beyond the five dollar Workers Paid subscription. Requests, CPU and
+storage are all under two per cent of their allowances. Writes are the one that
+uses a meaningful share, at around 30%, and they get their own section below.
+
+It does not fit the D1 free tier in this configuration, at roughly 480,000 writes
+a day against an allowance of 100,000. Note what going over means there: the free
+tier blocks rather than bills, returning errors until midnight UTC, so the
+consequence is a stalled collector and not a charge. A free deployment is possible
+but it is a smaller service, and the workings are in
 [docs/design.md](docs/design.md#what-the-platform-actually-costs).
 
 ## The two dials that matter
@@ -50,8 +56,9 @@ everything a tick does counts towards the same 50. A tick can also probe one
 instance, which costs up to five requests. So 43 collect, 5 probe, 2 spare. If
 you raise it on Workers Paid, keep the probe allowance in the sum.
 
-`MAX_PARSE_BYTES_PER_TICK` is 2 MB, which keeps a tick inside the free tier's
-10 ms of CPU. When the budget is reached the collector stops and defers the
+`MAX_PARSE_BYTES_PER_TICK` is 2 MB, which keeps a tick inside the 10 ms of CPU the
+free tier allows per cron trigger, and is far below anything Workers Paid cares
+about. When the budget is reached the collector stops and defers the
 remaining jobs to the next tick, which is safe because `min_id` cursors mean
 nothing is lost by reading a tag a minute later. The tick report says how many
 were deferred. On Workers Paid you can raise this well past any real tick.
