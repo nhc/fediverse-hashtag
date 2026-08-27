@@ -269,3 +269,46 @@ longer scales with tags times minutes, so the tracked ceiling of 150 lands near
 nobody had measured, for the second time in this project. The first was parse
 cost, which turned out five times cheaper than assumed. Measure the write path as
 well as the read path.
+
+## 15. Open: discovery is being captured by news-bot tag clouds
+*27 August 2026, from the first night of live running*
+
+**The problem.** Discovery filled the fifty-tag ceiling in about an hour, and a
+sixth of what it admitted is not a community at all. Measured on the live index:
+
+| Tag | Posts | Authors | Posts/author | Origin servers |
+|---|---|---|---|---|
+| `#featurednews` | 197 | 14 | 14.1 | **2** |
+| `#headlines` | 375 | 60 | 6.3 | **2** |
+| `#topstories` | 219 | 23 | 9.5 | **3** |
+| `#republiquefrancaise` | 61 | 17 | 3.6 | **1** |
+| `#photography` | 234 | 161 | 1.5 | 65 |
+| `#music` | 213 | 116 | 1.8 | 49 |
+
+**Why the author threshold missed it.** Promotion requires five distinct authors,
+which was chosen to stop one person posting repeatedly from earning a slot. It
+does that. What it does not stop is a news farm running fifteen bot accounts on
+two servers, because those are fifteen genuinely distinct authors.
+
+The signal that separates the two cleanly is not authors, it is **origin server
+diversity**. A tag whose posts come from sixty-five servers is a conversation
+happening across the network. A tag whose posts come from two is a publisher
+broadcasting, however many accounts it uses to do it.
+
+**The fix, not yet implemented.** Require origin diversity at promotion as well as
+author count: something like at least five distinct authors *and* at least four
+distinct origin servers. `tag_candidate` does not currently store `origin_host`,
+so this needs a column and a migration.
+
+Worth adding the ratio to the ranking too. `posts_per_author` above about 6 with
+few origin servers is the shape of a bot farm, and it is already published on the
+tags page, so the interface could flag it before anybody acts on the number.
+
+**Why it was left overnight rather than fixed immediately.** The state is stable:
+the ceiling is full, so nothing further is promoted, and retirement needs a day of
+silence plus a week without queries, so nothing churns in the meantime. Thirty-five
+better candidates are queued behind the ceiling and will still be there.
+
+**Also worth noting.** The queue is evidence the pool works. `strongest_candidate`
+reached 52 distinct authors, well above the threshold, so the raw discovery
+mechanism is finding plenty. The problem is purely which candidates get in.
