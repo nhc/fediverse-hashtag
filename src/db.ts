@@ -124,9 +124,10 @@ export async function setOptOut(
 
 // --- Tags -------------------------------------------------------------------
 
+/** The tracked set: tags actually being polled. */
 export async function loadTags(db: D1Database): Promise<TagRow[]> {
   const { results } = await db
-    .prepare('SELECT * FROM tag WHERE blocked = 0 ORDER BY id')
+    .prepare('SELECT * FROM tag WHERE blocked = 0 AND tracked = 1 ORDER BY id')
     .all<TagRow>();
   return results ?? [];
 }
@@ -468,6 +469,205 @@ export async function hostsReportingForTag(
   return (results ?? []).map((row) => row.mask);
 }
 
+// --- Discovery --------------------------------------------------------------
+
+/**
+ * Record co-occurring tags the index is not yet tracking.
+ *
+ * Keyed on (name, author_hash), so the row count per name is an exact distinct
+ * author count. That is the signal worth having: it separates a conversation
+ * from one account posting repeatedly, and no amount of use-counting can.
+ *
+ * The caller caps how many of these are written per tick. Recording every
+ * co-occurring tag would be several hundred writes a minute, which is the free
+ * tier's entire daily allowance before lunch.
+ */
+export async function recordCandidates(
+  db: D1Database,
+  rows: readonly { name: string; authorHash: Uint8Array }[],
+  now: number,
+): Promise<void> {
+  const statements = rows.map((row) =>
+    db
+      .prepare(
+        `INSERT INTO tag_candidate (name, author_hash, first_seen)
+         VALUES (?1, ?2, ?3)
+         ON CONFLICT(name, author_hash) DO NOTHING`,
+      )
+      .bind(row.name, blob(row.authorHash), now),
+  );
+  await runBatched(db, statements);
+}
+
+/**
+ * Discovered tags, ranked by how many different people are using them.
+ *
+ * Already-tracked names are excluded in SQL rather than filtered afterwards, so
+ * the LIMIT applies to genuine candidates and a busy tracked tag cannot crowd
+ * real discoveries out of the page.
+ */
+export async function loadCandidates(
+  db: D1Database,
+  since: number,
+  minAuthors: number,
+  limit = 50,
+): Promise<{ name: string; distinctAuthors: number; firstSeen: number }[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT c.name                AS name,
+              COUNT(*)              AS authors,
+              MIN(c.first_seen)     AS first_seen
+         FROM tag_candidate c
+        WHERE c.first_seen >= ?1
+          AND c.name NOT IN (SELECT name FROM tag WHERE tracked = 1 OR blocked = 1)
+        GROUP BY c.name
+       HAVING COUNT(*) >= ?2
+        ORDER BY authors DESC, name ASC
+        LIMIT ?3`,
+    )
+    .bind(since, minAuthors, limit)
+    .all<{ name: string; authors: number; first_seen: number }>();
+
+  return (results ?? []).map((row) => ({
+    name: row.name,
+    distinctAuthors: row.authors,
+    firstSeen: row.first_seen,
+  }));
+}
+
+/** Start tracking a discovered tag. Reversible: retirement only clears a flag. */
+export async function promoteTag(db: D1Database, name: string, now: number): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO tag (name, display, tier, first_seen_at, tracked)
+       VALUES (?1, ?1, 'cold', ?2, 1)
+       ON CONFLICT(name) DO UPDATE
+          SET tracked = 1, retired_at = NULL`,
+    )
+    .bind(name, now)
+    .run();
+}
+
+/**
+ * Stop polling a tag, keeping its row and history.
+ *
+ * Retiring rather than deleting means a tag that comes back does not start from
+ * nothing, and the decision can be read later rather than only inferred from an
+ * absence.
+ */
+export async function retireTags(
+  db: D1Database,
+  tagIds: readonly number[],
+  now: number,
+): Promise<void> {
+  const statements = tagIds.map((id) =>
+    db.prepare('UPDATE tag SET tracked = 0, retired_at = ?2 WHERE id = ?1').bind(id, now),
+  );
+  await runBatched(db, statements);
+}
+
+export interface TagOverview {
+  id: number;
+  name: string;
+  display: string | null;
+  tier: Tier;
+  firstSeenAt: number;
+  lastQueryAt: number | null;
+  posts24h: number;
+  authors24h: number;
+  posts1h: number;
+  authors1h: number;
+  originServers24h: number;
+}
+
+/**
+ * Every tracked tag with its activity, for the discovery page.
+ *
+ * One query with conditional aggregates rather than one query per tag. The tag
+ * count is bounded by the request budget, but the page would still be dozens of
+ * round trips otherwise.
+ */
+export async function tagOverview(db: D1Database, now: number): Promise<TagOverview[]> {
+  const dayAgo = now - 86_400;
+  const hourAgo = now - 3600;
+
+  const { results } = await db
+    .prepare(
+      `SELECT t.id            AS id,
+              t.name          AS name,
+              t.display       AS display,
+              t.tier          AS tier,
+              t.first_seen_at AS firstSeenAt,
+              t.last_query_at AS lastQueryAt,
+              COUNT(o.uri)                                                  AS posts24,
+              COUNT(DISTINCT o.author_hash)                                 AS authors24,
+              COUNT(DISTINCT o.origin_host)                                 AS origins24,
+              COUNT(CASE WHEN o.created_at >= ?2 THEN 1 END)                AS posts1h,
+              COUNT(DISTINCT CASE WHEN o.created_at >= ?2
+                                  THEN o.author_hash END)                   AS authors1h
+         FROM tag t
+         LEFT JOIN observation o
+                ON o.tag_id = t.id AND o.is_boost = 0 AND o.created_at >= ?1
+        WHERE t.tracked = 1 AND t.blocked = 0
+        GROUP BY t.id
+        ORDER BY t.name`,
+    )
+    .bind(dayAgo, hourAgo)
+    .all<{
+      id: number;
+      name: string;
+      display: string | null;
+      tier: Tier;
+      firstSeenAt: number;
+      lastQueryAt: number | null;
+      posts24: number;
+      authors24: number;
+      origins24: number;
+      posts1h: number;
+      authors1h: number;
+    }>();
+
+  return (results ?? []).map((row) => ({
+    id: row.id,
+    name: row.name,
+    display: row.display,
+    tier: row.tier,
+    firstSeenAt: row.firstSeenAt,
+    lastQueryAt: row.lastQueryAt,
+    posts24h: row.posts24,
+    authors24h: row.authors24,
+    posts1h: row.posts1h,
+    authors1h: row.authors1h,
+    originServers24h: row.origins24,
+  }));
+}
+
+/** Tracked tags with the figures retirement decisions need. */
+export async function trackedForRetirement(
+  db: D1Database,
+  now: number,
+): Promise<{ id: number; name: string; postsLast24h: number; lastQueryAt: number | null; firstSeenAt: number }[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT t.id AS id, t.name AS name, t.last_query_at AS lastQueryAt,
+              t.first_seen_at AS firstSeenAt, COUNT(o.uri) AS posts
+         FROM tag t
+         LEFT JOIN observation o ON o.tag_id = t.id AND o.created_at >= ?1
+        WHERE t.tracked = 1 AND t.blocked = 0
+        GROUP BY t.id`,
+    )
+    .bind(now - 86_400)
+    .all<{ id: number; name: string; lastQueryAt: number | null; firstSeenAt: number; posts: number }>();
+
+  return (results ?? []).map((row) => ({
+    id: row.id,
+    name: row.name,
+    postsLast24h: row.posts,
+    lastQueryAt: row.lastQueryAt,
+    firstSeenAt: row.firstSeenAt,
+  }));
+}
+
 // --- Rollups, logging and retention -----------------------------------------
 
 /**
@@ -697,6 +897,7 @@ export interface SweepResult {
   pollLog: number;
   rollups: number;
   optedOut: number;
+  candidates: number;
 }
 
 /**
@@ -728,6 +929,13 @@ export async function sweep(
     )
     .run();
 
+  // The discovery pool is kept a little longer than observations, because a tag
+  // needs time to accumulate enough different authors to be worth promoting.
+  const candidates = await db
+    .prepare('DELETE FROM tag_candidate WHERE first_seen < ?1')
+    .bind(now - 48 * 3600)
+    .run();
+
   const pollLog = await db.prepare('DELETE FROM poll_log WHERE at < ?1').bind(pollLogCutoff).run();
   const rollups = await db
     .prepare('DELETE FROM tag_minute WHERE minute < ?1')
@@ -739,6 +947,7 @@ export async function sweep(
     pollLog: pollLog.meta.changes ?? 0,
     rollups: rollups.meta.changes ?? 0,
     optedOut: optedOut.meta.changes ?? 0,
+    candidates: candidates.meta.changes ?? 0,
   };
 }
 

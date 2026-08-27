@@ -41,7 +41,17 @@
     "RATELIMIT_FLOOR": "30",
 
     // Hours to keep observation rows. One more than the longest window.
-    "RETENTION_HOURS": "25"
+    "RETENTION_HOURS": "25",
+
+    // Discovery candidate rows written per tick.
+    //
+    // Recording every co-occurring tag would be several hundred writes a
+    // minute, and the D1 free tier allows 100,000 rows written a day in total.
+    // 60 a tick is roughly 86,000 a day, so on the free tier this competes
+    // directly with observations: lower it, or track fewer tags. On Workers
+    // Paid the included allowance is 50 million a month and this is noise.
+    // Tags seen most often in a tick are written first.
+    "MAX_CANDIDATE_WRITES_PER_TICK": "60"
   },
 
   "d1_databases": [

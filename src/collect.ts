@@ -11,6 +11,7 @@
 import {
   applyHealth,
   loadCursors,
+  recordCandidates,
   loadInstances,
   loadSuppressedAuthors,
   loadTags,
@@ -24,7 +25,7 @@ import {
   type PollLogEntry,
 } from './db';
 import { MAX_LIMIT, fetchTagTimeline } from './mastodon';
-import { normalise } from './normalise';
+import { hashKey, normalise } from './normalise';
 import { healthAfterPoll, isCollectable } from './registry';
 import { planTick, type PollJob, type SchedulableTag } from './scheduler';
 import type { Env, NormalisedPost } from './types';
@@ -46,6 +47,7 @@ export interface CollectConfig {
   maxTagsPerBatch: number;
   rateLimitFloor: number;
   retentionHours: number;
+  maxCandidateWrites: number;
 }
 
 export interface TickReport {
@@ -58,6 +60,9 @@ export interface TickReport {
   hostsFailed: number;
   postsObserved: number;
   observationsWritten: number;
+  /** Distinct untracked tags seen this tick, before the write cap is applied. */
+  candidatesSeen: number;
+  candidatesWritten: number;
   skipped: { nonPublic: number; malformed: number; suppressed: number };
   note: string | null;
 }
@@ -75,6 +80,7 @@ export function configFromEnv(env: Env): CollectConfig {
     maxTagsPerBatch: number(env.MAX_TAGS_PER_BATCH, 4),
     rateLimitFloor: number(env.RATELIMIT_FLOOR, 30),
     retentionHours: number(env.RETENTION_HOURS, 25),
+    maxCandidateWrites: number(env.MAX_CANDIDATE_WRITES_PER_TICK, 60),
   };
 }
 
@@ -97,6 +103,8 @@ export async function collectTick(env: Env, now: number): Promise<TickReport> {
     hostsFailed: 0,
     postsObserved: 0,
     observationsWritten: 0,
+    candidatesSeen: 0,
+    candidatesWritten: 0,
     skipped: { nonPublic: 0, malformed: 0, suppressed: 0 },
     note: null,
   };
@@ -148,6 +156,11 @@ export async function collectTick(env: Env, now: number): Promise<TickReport> {
   report.jobsPlanned = jobs.length;
 
   const merged = new Map<string, MergedObservation>();
+
+  // Tags seen on collected posts that the index is not yet tracking. This is
+  // the discovery pool, and it costs nothing to gather: the request has already
+  // been paid for and the tags are sitting in the response.
+  const candidates = new Map<string, { authors: Map<string, Uint8Array>; occurrences: number }>();
   const cursorPatches: CursorPatch[] = [];
   const pollEntries: PollLogEntry[] = [];
   const failuresByHost = new Map<string, number>();
@@ -234,7 +247,23 @@ export async function collectTick(env: Env, now: number): Promise<TickReport> {
       for (const post of posts) {
         for (const name of post.tags) {
           const tagId = tagIdByName.get(name);
-          if (tagId === undefined) continue;
+
+          if (tagId === undefined) {
+            // Not tracked, so it becomes a discovery candidate rather than being
+            // thrown away. Authors are deduplicated by hash within the tick, so
+            // one person using a tag three times counts once.
+            const entry = candidates.get(name);
+            if (entry === undefined) {
+              candidates.set(name, {
+                authors: new Map([[hashKey(post.authorHash), post.authorHash]]),
+                occurrences: 1,
+              });
+            } else {
+              entry.authors.set(hashKey(post.authorHash), post.authorHash);
+              entry.occurrences += 1;
+            }
+            continue;
+          }
 
           const key = `${tagId}\n${post.uri}`;
           const existing = merged.get(key);
@@ -267,7 +296,26 @@ export async function collectTick(env: Env, now: number): Promise<TickReport> {
   }));
   report.observationsWritten = writes.length;
 
+  // Discovery writes are capped, because recording every co-occurring tag would
+  // be several hundred rows a minute and the free tier allows 100,000 a day in
+  // total. Tags that appeared most often in this tick go first, on the grounds
+  // that a tag showing up repeatedly is likelier to matter than one seen once.
+  report.candidatesSeen = candidates.size;
+  const candidateWrites: { name: string; authorHash: Uint8Array }[] = [];
+  const ranked = [...candidates.entries()].sort(
+    (a, b) => b[1].occurrences - a[1].occurrences || a[0].localeCompare(b[0]),
+  );
+  for (const [name, entry] of ranked) {
+    if (candidateWrites.length >= config.maxCandidateWrites) break;
+    for (const authorHash of entry.authors.values()) {
+      if (candidateWrites.length >= config.maxCandidateWrites) break;
+      candidateWrites.push({ name, authorHash });
+    }
+  }
+  report.candidatesWritten = candidateWrites.length;
+
   if (writes.length > 0) await upsertObservations(env.DB, writes);
+  if (candidateWrites.length > 0) await recordCandidates(env.DB, candidateWrites, now);
   if (cursorPatches.length > 0) await saveCursors(env.DB, cursorPatches);
   if (pollEntries.length > 0) await recordPolls(env.DB, pollEntries);
   if (healthByHost.size > 0) await applyHealth(env.DB, [...healthByHost.values()]);

@@ -21,6 +21,8 @@ import {
 import {
   distinctOriginCount,
   findTag,
+  loadCandidates,
+  tagOverview,
   healthSummary,
   instancesReporting,
   loadInstances,
@@ -32,6 +34,7 @@ import {
   timeseries,
   windowCounts,
 } from './db';
+import { DEFAULT_MIN_AUTHORS, postsPerAuthor, rankTags, type DiscoveryOrder } from './discovery';
 import { ensureTagHistory } from './history';
 import { casefoldTag } from './normalise';
 import { isCollectable, isMonitored } from './registry';
@@ -222,6 +225,102 @@ export async function tagResponse(env: Env, rawTag: string, now: number): Promis
   return json(data);
 }
 
+/** How many discovered tags the index will list. */
+const DISCOVERY_LIMIT = 60;
+
+export function parseOrder(raw: string | null): DiscoveryOrder {
+  return raw === 'posts' || raw === 'name' ? raw : 'authors';
+}
+
+/**
+ * Every tracked tag, plus what the index has discovered but is not yet watching.
+ *
+ * This is the discovery surface, and the ordering default is deliberate. Tags
+ * are ranked by distinct authors rather than by post count, because a tag used
+ * two hundred times by three accounts is one person shouting and a tag used
+ * twenty times by twenty accounts is a conversation. Ranking by posts would put
+ * the shouting first, so posts ordering is available but not the default.
+ *
+ * posts_per_author is published alongside every count so a reader can see which
+ * they are looking at without taking the ranking on trust.
+ */
+export async function buildTagsData(
+  env: Env,
+  now: number,
+  order: DiscoveryOrder = 'authors',
+): Promise<Record<string, unknown>> {
+  const [overview, discovered] = await Promise.all([
+    tagOverview(env.DB, now),
+    loadCandidates(env.DB, now - 48 * 3600, DEFAULT_MIN_AUTHORS, DISCOVERY_LIMIT),
+  ]);
+
+  const ranked = rankTags(
+    overview.map((tag) => ({
+      name: tag.name,
+      display: tag.display ?? tag.name,
+      tier: tag.tier,
+      postsObserved: tag.posts24h,
+      authorsObserved: tag.authors24h,
+      posts_observed_1h: tag.posts1h,
+      authors_observed_1h: tag.authors1h,
+      origin_servers: tag.originServers24h,
+      first_seen: new Date(tag.firstSeenAt * 1000).toISOString(),
+    })),
+    order,
+  );
+
+  return {
+    as_of: new Date(now * 1000).toISOString(),
+    completeness: 'partial',
+    statement: STATEMENT,
+    order,
+    ranking_note:
+      'Ranked by distinct authors over 24 hours, not by post count. A tag used ' +
+      'many times by few accounts is one person posting, not a conversation. ' +
+      'posts_per_author is given so you can tell which you are looking at.',
+    tracked: {
+      count: ranked.length,
+      note: 'Tags the index is polling. Figures cover the last 24 hours unless noted.',
+      tags: ranked.map((tag) => ({
+        tag: tag.name,
+        display: tag.display,
+        tier: tag.tier,
+        posts_observed: tag.postsObserved,
+        authors_observed: tag.authorsObserved,
+        posts_per_author: postsPerAuthor(tag.postsObserved, tag.authorsObserved),
+        posts_observed_1h: tag.posts_observed_1h,
+        authors_observed_1h: tag.authors_observed_1h,
+        origin_servers: tag.origin_servers,
+        first_seen: tag.first_seen,
+        url: `/tag/${encodeURIComponent(tag.name)}`,
+      })),
+    },
+    discovered: {
+      count: discovered.length,
+      note:
+        'Tags seen on collected posts that the index is not yet polling, with at ' +
+        `least ${DEFAULT_MIN_AUTHORS} distinct authors in the last 48 hours. These ` +
+        'have no windowed history yet. The strongest are promoted automatically ' +
+        'when a polling slot is free, and searching one promotes it immediately.',
+      tags: discovered.map((candidate) => ({
+        tag: candidate.name,
+        authors_observed: candidate.distinctAuthors,
+        first_seen: new Date(candidate.firstSeen * 1000).toISOString(),
+        url: `/tag/${encodeURIComponent(candidate.name)}`,
+      })),
+    },
+    methodology: '/coverage',
+  };
+}
+
+export async function tagsResponse(
+  env: Env,
+  now: number,
+  order: DiscoveryOrder,
+): Promise<Response> {
+  return json(await buildTagsData(env, now, order), 200, 30);
+}
+
 export async function timeseriesResponse(env: Env, rawTag: string, now: number): Promise<Response> {
   const name = normaliseTagInput(rawTag);
   if (name === null) return json({ error: 'not a usable hashtag' }, 400);
@@ -363,6 +462,7 @@ export async function metaResponse(env: Env, now: number): Promise<Response> {
     instances_monitored: instances.filter(isMonitored).length,
     contact: env.CONTACT,
     endpoints: [
+      'GET /api/v1/tags',
       'GET /api/v1/tags/:tag',
       'GET /api/v1/tags/:tag/timeseries',
       'GET /api/v1/tags/:tag/posts',

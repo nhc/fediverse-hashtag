@@ -8,27 +8,39 @@
 
 import {
   buildTagData,
+  buildTagsData,
   coverageResponse,
   instancesResponse,
   isDataError,
   json,
   metaResponse,
   postsResponse,
+  parseOrder,
   STATEMENT,
   tagResponse,
+  tagsResponse,
   timeseriesResponse,
 } from './api';
 import { collectTick, configFromEnv } from './collect';
 import {
   healthSummary,
+  loadCandidates,
   loadInstances,
   loadTags,
   postsPerHourByTag,
+  promoteTag,
   representativePosts,
+  retireTags,
   setTagTier,
   sweep,
   timeseries,
+  trackedForRetirement,
 } from './db';
+import {
+  DEFAULT_MIN_AUTHORS,
+  selectPromotions,
+  selectRetirements,
+} from './discovery';
 import { probeOneDueInstance } from './probe';
 import { assignTiers } from './scheduler';
 import {
@@ -38,7 +50,9 @@ import {
   searchPage,
   statusPage,
   tagPage,
+  tagsPage,
   type TagView,
+  type TagsView,
 } from './ui';
 import { minuteBucket } from './aggregate';
 import type { Env, Tier } from './types';
@@ -52,6 +66,15 @@ import type { Env, Tier } from './types';
  */
 const MAX_HOT_TAGS = 3;
 const MAX_WARM_TAGS = 40;
+
+/**
+ * Ceiling on the tracked set.
+ *
+ * The tier arithmetic in docs/design.md supports roughly three hot tags, forty
+ * warm and a hundred cold inside a 43 request budget. This is that total, and it
+ * is what stops discovery from quietly outgrowing the request budget.
+ */
+const MAX_TRACKED_TAGS = 150;
 
 export default {
   async scheduled(_controller: ScheduledController, env: Env, _ctx: ExecutionContext): Promise<void> {
@@ -75,6 +98,12 @@ export default {
       if (minute % 5 === 0) await retierTags(env, now);
     } catch (cause) {
       console.log(JSON.stringify({ event: 'retier_failed', error: String(cause) }));
+    }
+
+    try {
+      if (minute % 10 === 0) await runDiscovery(env, now);
+    } catch (cause) {
+      console.log(JSON.stringify({ event: 'discovery_failed', error: String(cause) }));
     }
 
     try {
@@ -106,6 +135,9 @@ export default {
     try {
       // --- JSON API ---
       if (path === '/api/v1/meta') return await metaResponse(env, now);
+      if (path === '/api/v1/tags') {
+        return await tagsResponse(env, now, parseOrder(url.searchParams.get('order')));
+      }
       if (path === '/api/v1/instances') return await instancesResponse(env, now);
       if (path === '/api/v1/coverage') return await coverageResponse(env, now);
 
@@ -120,6 +152,7 @@ export default {
 
       // --- Web pages ---
       if (path === '/') return html(searchPage(STATEMENT));
+      if (path === '/tags') return await renderTagsPage(env, now, url);
 
       if (path === '/tag') {
         const query = url.searchParams.get('q');
@@ -315,4 +348,84 @@ async function renderStatusPage(env: Env, now: number): Promise<Response> {
       })),
     }),
   );
+}
+
+/**
+ * Promote discovered tags and retire spent ones.
+ *
+ * Runs every ten minutes. Promotion is the point of the discovery pool, and
+ * retirement is what makes promotion possible: the tracked set is capped by the
+ * request budget, so a tag that has gone quiet has to give its slot back before
+ * a new one can have it.
+ */
+async function runDiscovery(env: Env, now: number): Promise<void> {
+  // Retire first, so slots freed this round are available to promote into.
+  const tracked = await trackedForRetirement(env.DB, now);
+  const retiring = selectRetirements(tracked, { now });
+  if (retiring.length > 0) {
+    await retireTags(env.DB, retiring, now);
+    console.log(JSON.stringify({ event: 'retire', count: retiring.length }));
+  }
+
+  const candidates = await loadCandidates(env.DB, now - 48 * 3600, DEFAULT_MIN_AUTHORS, 100);
+  const promoting = selectPromotions(candidates, {
+    now,
+    trackedCount: tracked.length - retiring.length,
+    maxTracked: MAX_TRACKED_TAGS,
+  });
+
+  for (const name of promoting) await promoteTag(env.DB, name, now);
+  if (promoting.length > 0) {
+    console.log(JSON.stringify({ event: 'promote', tags: promoting }));
+  }
+}
+
+async function renderTagsPage(env: Env, now: number, url: URL): Promise<Response> {
+  const order = parseOrder(url.searchParams.get('order'));
+  const data = await buildTagsData(env, now, order);
+
+  const tracked = data['tracked'] as {
+    note: string;
+    tags: {
+      tag: string;
+      display: string;
+      tier: string;
+      posts_observed: number;
+      authors_observed: number;
+      posts_per_author: number | null;
+      posts_observed_1h: number;
+      authors_observed_1h: number;
+      origin_servers: number;
+    }[];
+  };
+  const discovered = data['discovered'] as {
+    note: string;
+    tags: { tag: string; authors_observed: number }[];
+  };
+
+  const view: TagsView = {
+    statement: STATEMENT,
+    asOf: String(data['as_of']),
+    order,
+    rankingNote: String(data['ranking_note']),
+    trackedNote: tracked.note,
+    discoveredNote: discovered.note,
+    tracked: tracked.tags.map((tag) => ({
+      tag: tag.tag,
+      display: tag.display,
+      tier: tag.tier,
+      postsObserved: tag.posts_observed,
+      authorsObserved: tag.authors_observed,
+      postsPerAuthor: tag.posts_per_author,
+      posts1h: tag.posts_observed_1h,
+      authors1h: tag.authors_observed_1h,
+      originServers: tag.origin_servers,
+    })),
+    discovered: discovered.tags.map((tag) => ({
+      tag: tag.tag,
+      authorsObserved: tag.authors_observed,
+    })),
+  };
+
+  return html(tagsPage(view), 200, 30);
 }

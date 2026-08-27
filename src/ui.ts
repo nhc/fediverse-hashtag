@@ -96,6 +96,7 @@ export function layout(title: string, body: string, statement: string): string {
 <body>
 <nav><div>
   <a href="/">Search</a>
+  <a href="/tags">All tags</a>
   <a href="/coverage">Coverage and methodology</a>
   <a href="/status">Status</a>
   <a href="/api/v1/meta">API</a>
@@ -149,7 +150,10 @@ the Fediverse, because no server holds a complete view of the network.</p>
 </form>
 <p class="note">Searching a hashtag this index does not yet track will start it
 tracking, and show the daily counters servers keep about themselves in the
-meantime.</p>`,
+meantime.</p>
+<p>Or don't search. <a href="/tags">Browse every tag the index is watching</a>,
+ranked by how many different people are using them, along with tags it has
+discovered but is not yet polling.</p>`,
     statement,
   );
 }
@@ -481,5 +485,122 @@ export function notFoundPage(statement: string): string {
     `<h1>Not found</h1><p class="statement">There is nothing at this address.
 <a href="/">Search for a hashtag</a>.</p>`,
     statement,
+  );
+}
+
+// --- All tags, the discovery page -------------------------------------------
+
+export interface TagsView {
+  statement: string;
+  asOf: string;
+  order: 'authors' | 'posts' | 'name';
+  rankingNote: string;
+  trackedNote: string;
+  discoveredNote: string;
+  tracked: {
+    tag: string;
+    display: string;
+    tier: string;
+    postsObserved: number;
+    authorsObserved: number;
+    postsPerAuthor: number | null;
+    posts1h: number;
+    authors1h: number;
+    originServers: number;
+  }[];
+  discovered: { tag: string; authorsObserved: number }[];
+}
+
+/**
+ * A bar showing a value against the largest in the column.
+ *
+ * Inline and unitless on purpose. The number beside it is the fact; this is only
+ * there so the shape of the distribution is visible without reading every row.
+ */
+function bar(value: number, peak: number): string {
+  const share = peak <= 0 ? 0 : Math.max(0, Math.min(1, value / peak));
+  const width = Math.round(share * 100);
+  return `<span style="display:inline-block;width:3.5rem;height:.4rem;background:var(--line);
+    border-radius:.2rem;overflow:hidden;vertical-align:middle">
+    <span style="display:block;width:${width}%;height:100%;background:var(--accent)"></span></span>`;
+}
+
+export function tagsPage(view: TagsView): string {
+  const peakAuthors = Math.max(1, ...view.tracked.map((tag) => tag.authorsObserved));
+  const peakDiscovered = Math.max(1, ...view.discovered.map((tag) => tag.authorsObserved));
+
+  const orderLink = (key: TagsView['order'], label: string): string =>
+    view.order === key
+      ? `<strong>${escapeHtml(label)}</strong>`
+      : `<a href="/tags?order=${key}">${escapeHtml(label)}</a>`;
+
+  const trackedRows = view.tracked
+    .map(
+      (tag) => `<tr>
+  <td><a href="/tag/${encodeURIComponent(tag.tag)}">#${escapeHtml(tag.display)}</a></td>
+  <td class="num">${formatCount(tag.authorsObserved)} ${bar(tag.authorsObserved, peakAuthors)}</td>
+  <td class="num">${formatCount(tag.postsObserved)}</td>
+  <td class="num">${
+    tag.postsPerAuthor === null
+      ? '<span class="unavailable">&mdash;</span>'
+      : `<span class="${tag.postsPerAuthor >= 5 ? 'q-partial' : ''}">${tag.postsPerAuthor}</span>`
+  }</td>
+  <td class="num">${formatCount(tag.authors1h)}</td>
+  <td class="num">${formatCount(tag.originServers)}</td>
+  <td>${escapeHtml(tag.tier)}</td>
+</tr>`,
+    )
+    .join('\n');
+
+  const discoveredRows = view.discovered
+    .map(
+      (tag) => `<tr>
+  <td><a href="/tag/${encodeURIComponent(tag.tag)}">#${escapeHtml(tag.tag)}</a></td>
+  <td class="num">${formatCount(tag.authorsObserved)} ${bar(tag.authorsObserved, peakDiscovered)}</td>
+</tr>`,
+    )
+    .join('\n');
+
+  return layout(
+    'All tags',
+    `<h1>All tags</h1>
+<p class="statement">${escapeHtml(view.statement)}</p>
+<p class="note">${escapeHtml(view.rankingNote)}</p>
+<p class="note">Order by ${orderLink('authors', 'authors')} &middot;
+  ${orderLink('posts', 'posts')} &middot; ${orderLink('name', 'name')}</p>
+
+<h2>Tracked (${view.tracked.length})</h2>
+<p class="note">${escapeHtml(view.trackedNote)}</p>
+${
+  view.tracked.length === 0
+    ? '<p class="note">Nothing tracked yet.</p>'
+    : `<div class="scroll"><table>
+<thead><tr>
+  <th>Tag</th>
+  <th class="num">Authors 24h</th>
+  <th class="num">Posts 24h</th>
+  <th class="num">Posts per author</th>
+  <th class="num">Authors 1h</th>
+  <th class="num">Servers</th>
+  <th>Tier</th>
+</tr></thead>
+<tbody>${trackedRows}</tbody></table></div>
+<p class="note">Posts per author is highlighted above 5, where a tag is likely a
+few accounts posting a lot rather than a conversation.</p>`
+}
+
+<h2>Discovered (${view.discovered.length})</h2>
+<p class="note">${escapeHtml(view.discoveredNote)}</p>
+${
+  view.discovered.length === 0
+    ? `<p class="note">Nothing discovered yet. Candidates appear once the collector
+       has seen a tag used by several different people on posts it collected.</p>`
+    : `<div class="scroll"><table>
+<thead><tr><th>Tag</th><th class="num">Distinct authors, 48h</th></tr></thead>
+<tbody>${discoveredRows}</tbody></table></div>`
+}
+<p class="note">As of ${escapeHtml(view.asOf.slice(0, 19).replace('T', ' '))} UTC.
+Same data as <code>/api/v1/tags</code>.</p>`,
+    view.statement,
   );
 }

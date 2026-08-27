@@ -456,6 +456,57 @@ Four pages, no more.
   collector lag. Published because an index making claims about its coverage
   should show its own failures.
 
+## Discovery
+
+Framing this as search-first was a mistake. It made the service a lookup tool for
+hashtags you already knew, and discovery is the point.
+
+The signal was already flowing past and being discarded. A post fetched for one
+tag carries others, and the collector kept only the tags it was already tracking.
+Those co-occurring tags are the discovery surface, and they cost nothing extra to
+see, because the request has already been paid for. A single tick was measured
+seeing 469 distinct untracked tags.
+
+### Distinct authors, never use count
+
+Candidates are stored as one row per tag per author, so the row count per tag is
+an exact distinct author count. That shape is chosen so the wrong ranking is
+impossible rather than merely discouraged.
+
+A tag used two hundred times by three accounts is one person shouting. A tag used
+twenty times by twenty accounts is a conversation. Only the second is worth a
+polling slot or a place on a page, and any ranking built on use count gets this
+backwards. `posts_per_author` is published beside every count so a reader can see
+which they are looking at rather than trusting the ordering.
+
+### Promotion and retirement
+
+The tracked set is capped at 150, which is what the tier arithmetic supports
+inside a 43 request budget. So admitting a tag needs a free slot, and slots come
+back from tags that have gone quiet.
+
+Every ten minutes, retirement runs first and promotion second. A tracked tag is
+retired when it has produced nothing for a day and nobody has asked about it for
+a week. Retiring sets a flag rather than deleting the row, so history survives and
+a returning tag does not start from nothing. Human interest alone keeps a tag:
+somebody watching a quiet hashtag is a perfectly good reason to keep watching it.
+
+Promotion then takes the strongest candidates by distinct authors, needing at
+least five, up to the number of free slots. A candidate that qualifies but finds
+no room stays a candidate, still counted and still shown as discovered.
+
+### What discovery costs
+
+Recording every co-occurring tag would be several hundred row writes a minute,
+and the D1 free tier allows 100,000 a day in total. So candidate writes are
+capped per tick, defaulting to 60, with the tags seen most often in that tick
+written first.
+
+That cap is a real limit and worth stating plainly: on the free tier, discovery
+breadth competes directly with observation depth, and 60 a tick is already around
+86,000 writes a day. On Workers Paid the included allowance is 50 million a month
+and the cap can go up substantially.
+
 ## Deliberately not in the MVP
 
 Named here so that leaving them out reads as a decision rather than an omission.
@@ -466,6 +517,4 @@ Named here so that leaving them out reads as a decision rather than an omission.
 - Adapters for Pixelfed, Misskey, PeerTube and Lemmy. Federation already delivers
   some of their posts through Mastodon timelines, which is worth measuring before
   writing code. Bluesky is a separate integration and a separate decision.
-- Discovery of trending tags across the whole index. It needs a public-timeline
-  firehose, which is a different ingestion shape and a much larger budget.
 - Author-level anything. Not a scope cut, a design rule. See [privacy](privacy.md).

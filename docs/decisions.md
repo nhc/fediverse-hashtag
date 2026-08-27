@@ -202,3 +202,32 @@ one, and it reaches instances the collector otherwise cannot read at all.
 **Cost.** Two sources with different properties on one page, which has to be
 labelled carefully. The daily figures are instance-local, at daily granularity,
 and not directly comparable with the index's own windows.
+
+## 13. Discovery ranks on distinct authors, not use count
+*27 August 2026, added after the MVP*
+
+**Decision.** Record co-occurring untracked tags as one row per tag per author,
+rank them by distinct authors, and promote automatically into a capped tracked
+set. Add an /tags page listing everything tracked and everything discovered.
+
+**Why.** The original design deferred discovery to a later phase and called the
+service search-first. That was the wrong call: it made the index a lookup tool
+for hashtags you already knew, and discovery is the actual point.
+
+The mechanism was already available and being thrown away. Posts fetched for one
+tag carry others, and a measured tick saw 469 distinct untracked tags. Ranking on
+distinct authors rather than uses comes from the prototype in the sibling
+mastodon project: a tag used 200 times by three accounts is a person shouting,
+not a community.
+
+**Cost.** Candidate writes are capped per tick, defaulting to 60, because
+recording everything would be several hundred rows a minute against a free-tier
+allowance of 100,000 a day. On the free tier discovery breadth therefore competes
+with observation depth. The cap is an env var and is noise on Workers Paid.
+
+**Consequence.** The tracked set is capped at 150 and now churns: quiet tags are
+retired to free slots for discovered ones. Retirement sets a flag rather than
+deleting, so history survives and the decision is reversible.
+
+**Revisit if.** Promotion proves too eager or too slow. The two dials are the
+author threshold and the tracked ceiling, and both are pure functions with tests.

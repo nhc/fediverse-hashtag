@@ -36,6 +36,7 @@ src/mastodon.ts    the API client. URL building and header parsing are pure.
 src/normalise.ts   statuses in, the few fields we store out. Pure.
 src/registry.ts    what each server is and whether to ask it now. Pure.
 src/aggregate.ts   windows, trends, coverage, and when to refuse to publish. Pure.
+src/discovery.ts   which tags to watch, ranked by distinct authors. Pure.
 src/robots.ts      robots.txt, honoured as an opt-out route. Pure.
 src/collect.ts     one tick: fetch, merge in memory, write once.
 src/probe.ts       asking each server what it allows. Never inferring it.
