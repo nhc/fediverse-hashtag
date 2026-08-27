@@ -134,11 +134,27 @@ one: that `min_id` paginates forward rather than filtering. If that ever
 reversed, advancing a cursor past a full page would skip posts silently, which is
 the worst failure this service could have.
 
+## Watching the write budget
+
+Writes are the only allowance this service uses a meaningful share of: roughly
+480,000 rows a day at fourteen tracked tags, about 15 million a month against the
+50 million included on Workers Paid.
+
+The figure scales with the tracked set, which is capped at 150. At that ceiling
+expect 40 to 45 million a month, which is inside the allowance but not by much.
+Two dials, in the order to reach for them:
+
+1. `MAX_CANDIDATE_WRITES_PER_TICK`, default 60. Setting it to 0 turns discovery
+   off entirely and takes off up to 86,000 writes a day.
+2. The cron interval. Five minutes instead of one divides everything by five.
+
+`rollupBuckets` in each tick log is the figure to watch, because it is the one
+that scales with tags rather than with polls.
+
 ## Known gaps
 
 - No admin endpoint for author opt-out, as above.
-- Cloudflare egress IPs are shared, and Mastodon rate-limits per IP. Some servers
-  throttle datacentre ranges. This has not been measured from a deployed Worker,
-  and it should be before the instance list grows.
 - No alerting. Failures are visible on `/status` and in `wrangler tail`, and
   nothing tells you to go and look.
+- Collection is currently **paused**: `triggers.crons` is an empty list in
+  `wrangler.jsonc`. Restore `["* * * * *"]` and deploy to resume.

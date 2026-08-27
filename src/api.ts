@@ -19,6 +19,7 @@ import {
   weightedMedianPopcount,
 } from './aggregate';
 import {
+  discoveryStats,
   distinctOriginCount,
   findTag,
   loadCandidates,
@@ -450,7 +451,10 @@ export async function coverageResponse(env: Env, now: number): Promise<Response>
 
 export async function metaResponse(env: Env, now: number): Promise<Response> {
   const instances = await loadInstances(env.DB);
-  const lastOk = await lastSuccessfulUpdate(env, instances);
+  const [lastOk, discovery] = await Promise.all([
+    lastSuccessfulUpdate(env, instances),
+    discoveryStats(env.DB, now),
+  ]);
 
   return json({
     service: 'Fediverse Hashtag Activity Index',
@@ -460,6 +464,17 @@ export async function metaResponse(env: Env, now: number): Promise<Response> {
     last_successful_update: lastOk === null ? null : new Date(lastOk * 1000).toISOString(),
     windows: WINDOWS.map((window) => window.key),
     instances_monitored: instances.filter(isMonitored).length,
+    discovery: {
+      tracked: discovery.trackedCount,
+      retired: discovery.retiredCount,
+      pool_names: discovery.poolNames,
+      pool_rows: discovery.poolRows,
+      strongest_candidate_authors: discovery.strongestAuthors,
+      ready_to_promote: discovery.readyToPromote,
+      note:
+        'A pool that stops growing is the thing to watch. Candidate writes are ' +
+        'capped per tick, so progress can stall without anything erroring.',
+    },
     contact: env.CONTACT,
     endpoints: [
       'GET /api/v1/tags',

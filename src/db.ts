@@ -642,6 +642,65 @@ export async function tagOverview(db: D1Database, now: number): Promise<TagOverv
   }));
 }
 
+/**
+ * Health of the discovery pool.
+ *
+ * Exposed because a pool that stops growing is the failure mode to watch for.
+ * Candidate writes are capped per tick and spent on the tags seen most often,
+ * which will often be tags whose author pairs are already stored, so progress
+ * can stall without anything erroring. Published on /api/v1/meta so that is
+ * visible rather than something only a database query would reveal.
+ */
+export async function discoveryStats(
+  db: D1Database,
+  now: number,
+): Promise<{
+  poolNames: number;
+  poolRows: number;
+  strongestAuthors: number;
+  readyToPromote: number;
+  trackedCount: number;
+  retiredCount: number;
+}> {
+  const pool = await db
+    .prepare(
+      `SELECT COUNT(DISTINCT name) AS names, COUNT(*) AS rows
+         FROM tag_candidate WHERE first_seen >= ?1`,
+    )
+    .bind(now - 48 * 3600)
+    .first<{ names: number | null; rows: number | null }>();
+
+  const strength = await db
+    .prepare(
+      `SELECT MAX(authors) AS strongest,
+              SUM(CASE WHEN authors >= 5 THEN 1 ELSE 0 END) AS ready
+         FROM (SELECT COUNT(*) AS authors
+                 FROM tag_candidate
+                WHERE first_seen >= ?1
+                  AND name NOT IN (SELECT name FROM tag WHERE tracked = 1 OR blocked = 1)
+                GROUP BY name)`,
+    )
+    .bind(now - 48 * 3600)
+    .first<{ strongest: number | null; ready: number | null }>();
+
+  const tags = await db
+    .prepare(
+      `SELECT SUM(CASE WHEN tracked = 1 THEN 1 ELSE 0 END) AS tracked,
+              SUM(CASE WHEN tracked = 0 THEN 1 ELSE 0 END) AS retired
+         FROM tag WHERE blocked = 0`,
+    )
+    .first<{ tracked: number | null; retired: number | null }>();
+
+  return {
+    poolNames: pool?.names ?? 0,
+    poolRows: pool?.rows ?? 0,
+    strongestAuthors: strength?.strongest ?? 0,
+    readyToPromote: strength?.ready ?? 0,
+    trackedCount: tags?.tracked ?? 0,
+    retiredCount: tags?.retired ?? 0,
+  };
+}
+
 /** Tracked tags with the figures retirement decisions need. */
 export async function trackedForRetirement(
   db: D1Database,
@@ -671,38 +730,46 @@ export async function trackedForRetirement(
 // --- Rollups, logging and retention -----------------------------------------
 
 /**
- * Recompute the per-minute rollups for these tags.
+ * Recompute the per-minute rollups for the buckets a tick actually touched.
  *
- * Recomputed rather than incremented, and that is the whole point. A post can
- * be observed again in a later tick when a second instance reports it, so
- * adding to a running total would count it twice. Reading the count back out of
- * the observation table makes the rollup idempotent, which matters because the
- * collector is built to expect duplicate delivery rather than to prevent it.
+ * Recomputed rather than incremented, because a post is observed again whenever
+ * a second instance reports it and adding to a running total would count it
+ * twice. Reading the count back out makes the rollup idempotent, which matters
+ * because the collector expects duplicate delivery rather than preventing it.
  *
- * The lookback exists because posts arrive late. A post written two minutes ago
- * that only reached a monitored server now belongs in its own minute, not this
- * one, so recent minutes are revisited rather than sealed.
+ * The caller passes exactly the (tag, minute) pairs that received a post this
+ * tick. The first version recomputed a ten-minute lookback for every affected
+ * tag on every tick, to catch posts arriving late. That works, but it rewrites
+ * eleven buckets a minute per tag whether anything changed or not: about 71,000
+ * writes a day at fourteen tags, and roughly 2.4 million at the tracked ceiling
+ * of 150, which would have taken the service past its D1 allowance and started
+ * costing money.
+ *
+ * Targeting touched buckets keeps the late-arrival behaviour exactly as it was.
+ * A post created five minutes ago still lands in its own minute, and that bucket
+ * is still recomputed, because the post arriving is what marks it as touched.
  */
 export async function refreshRollups(
   db: D1Database,
-  tagIds: readonly number[],
-  sinceSeconds: number,
+  buckets: readonly { tagId: number; minute: number }[],
   instancesReporting: number,
 ): Promise<void> {
-  const statements = tagIds.map((tagId) =>
+  const statements = buckets.map((bucket) =>
     db
       .prepare(
         `INSERT INTO tag_minute (tag_id, minute, posts, instances_reporting)
-         SELECT tag_id, created_at / 60, COUNT(*), ?3
+         SELECT ?1, ?2, COUNT(*), ?3
            FROM observation
-          WHERE tag_id = ?1 AND created_at >= ?2 AND is_boost = 0
-          GROUP BY tag_id, created_at / 60
+          WHERE tag_id = ?1
+            AND created_at >= ?2 * 60
+            AND created_at <  (?2 + 1) * 60
+            AND is_boost = 0
          ON CONFLICT(tag_id, minute) DO UPDATE
             SET posts               = excluded.posts,
                 instances_reporting = MAX(tag_minute.instances_reporting,
                                           excluded.instances_reporting)`,
       )
-      .bind(tagId, sinceSeconds, instancesReporting),
+      .bind(bucket.tagId, bucket.minute, instancesReporting),
   );
   await runBatched(db, statements);
 }

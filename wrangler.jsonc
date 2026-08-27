@@ -65,9 +65,13 @@
   ],
 
   "triggers": {
-    // Every minute. This sets the floor on collection latency, and the
-    // five-minute window is near-real-time rather than live because of it.
-    "crons": ["* * * * *"]
+    // PAUSED 27 August 2026 at the operator's request, pending a review of the
+    // write budget. An empty list removes the schedule on deploy, so nothing is
+    // collected and no requests are made to any third-party server. The Worker
+    // still serves its pages and API, which are read-only.
+    //
+    // To resume, restore: ["* * * * *"]
+    "crons": []
   },
 
   "observability": {

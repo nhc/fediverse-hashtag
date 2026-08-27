@@ -231,3 +231,41 @@ deleting, so history survives and the decision is reversible.
 
 **Revisit if.** Promotion proves too eager or too slow. The two dials are the
 author threshold and the tracked ceiling, and both are pure functions with tests.
+
+## 14. Three indexes, not six, and rollups only where posts landed
+*27 August 2026, after measuring the live index*
+
+**Decision.** Drop `observation_expiry`, `tag_candidate_seen` and the pair of
+`poll_log` indexes in favour of one composite `(at, host)`. Recompute per-minute
+rollups only for the buckets a tick actually touched, rather than an eleven-minute
+lookback per affected tag.
+
+**Why.** The write budget measured 700,000 to 800,000 rows a day against an
+earlier documented estimate of 720,000 a *month*. That estimate was wrong by a
+factor of twenty, because it counted observation inserts and nothing else.
+
+Nearly half the real figure was index maintenance. Every index costs a written row
+on each insert and each delete, and three of the six served only infrequent
+queries: two hourly sweeps and a candidate lookup over fifteen thousand rows. D1
+allows 25 billion reads a month against 50 million writes, so trading a scan for
+a write is the right way round.
+
+The rollup lookback was the other half. Recomputing eleven minute-buckets per
+affected tag every tick rewrote work that had not changed, and it scaled with the
+tag count: about 71,000 writes a day at fourteen tags and roughly 2.4 million at
+the tracked ceiling of 150, which would have gone past the allowance and started
+costing real money.
+
+**Cost.** The retention sweep and the candidate lookup now scan rather than seek.
+Both are infrequent and the tables small, so this is cheap. If `/tags` ever takes
+heavy traffic, the candidate index is the one to reconsider.
+
+**Consequence.** Around 480,000 writes a day at fourteen tags, roughly 15 million
+a month, 30% of the Workers Paid allowance. More importantly the rollup path no
+longer scales with tags times minutes, so the tracked ceiling of 150 lands near
+40 to 45 million a month rather than past the limit.
+
+**Lesson worth keeping.** The estimate that was twenty times out was the one
+nobody had measured, for the second time in this project. The first was parse
+cost, which turned out five times cheaper than assumed. Measure the write path as
+well as the read path.

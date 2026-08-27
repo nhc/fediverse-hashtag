@@ -27,6 +27,7 @@ import {
 import { MAX_LIMIT, fetchTagTimeline } from './mastodon';
 import { hashKey, normalise } from './normalise';
 import { healthAfterPoll, isCollectable } from './registry';
+import { minuteBucket } from './aggregate';
 import { planTick, type PollJob, type SchedulableTag } from './scheduler';
 import type { Env, NormalisedPost } from './types';
 
@@ -35,9 +36,6 @@ import type { Env, NormalisedPost } from './types';
  * so asking for more only queues them.
  */
 const CONCURRENCY = 6;
-
-/** Minutes of rollup to recompute, so posts arriving late land in their own minute. */
-const ROLLUP_LOOKBACK_SECONDS = 600;
 
 export interface CollectConfig {
   userAgent: string;
@@ -60,6 +58,8 @@ export interface TickReport {
   hostsFailed: number;
   postsObserved: number;
   observationsWritten: number;
+  /** Rollup buckets recomputed, the figure the write budget turns on. */
+  rollupBuckets: number;
   /** Distinct untracked tags seen this tick, before the write cap is applied. */
   candidatesSeen: number;
   candidatesWritten: number;
@@ -103,6 +103,7 @@ export async function collectTick(env: Env, now: number): Promise<TickReport> {
     hostsFailed: 0,
     postsObserved: 0,
     observationsWritten: 0,
+    rollupBuckets: 0,
     candidatesSeen: 0,
     candidatesWritten: 0,
     skipped: { nonPublic: 0, malformed: 0, suppressed: 0 },
@@ -165,7 +166,10 @@ export async function collectTick(env: Env, now: number): Promise<TickReport> {
   const pollEntries: PollLogEntry[] = [];
   const failuresByHost = new Map<string, number>();
   const healthByHost = new Map<string, InstanceHealthPatch>();
-  const affectedTagIds = new Set<number>();
+  // The (tag, minute) buckets that received a post this tick, which is exactly
+  // what the rollups need to recompute. A late-arriving post marks its own
+  // minute, so late arrivals are handled without rewriting untouched buckets.
+  const touchedBuckets = new Set<string>();
   const succeededHosts = new Set<string>();
   const failedHosts = new Set<string>();
 
@@ -269,7 +273,7 @@ export async function collectTick(env: Env, now: number): Promise<TickReport> {
           const existing = merged.get(key);
           if (existing === undefined) merged.set(key, { tagId, post, mask });
           else existing.mask |= mask;
-          affectedTagIds.add(tagId);
+          if (!post.isBoost) touchedBuckets.add(`${tagId}\n${minuteBucket(post.createdAt)}`);
         }
       }
 
@@ -319,13 +323,13 @@ export async function collectTick(env: Env, now: number): Promise<TickReport> {
   if (cursorPatches.length > 0) await saveCursors(env.DB, cursorPatches);
   if (pollEntries.length > 0) await recordPolls(env.DB, pollEntries);
   if (healthByHost.size > 0) await applyHealth(env.DB, [...healthByHost.values()]);
-  if (affectedTagIds.size > 0) {
-    await refreshRollups(
-      env.DB,
-      [...affectedTagIds],
-      now - ROLLUP_LOOKBACK_SECONDS,
-      succeededHosts.size,
-    );
+  report.rollupBuckets = touchedBuckets.size;
+  if (touchedBuckets.size > 0) {
+    const buckets = [...touchedBuckets].map((key) => {
+      const [tagId, minute] = key.split('\n');
+      return { tagId: Number(tagId), minute: Number(minute) };
+    });
+    await refreshRollups(env.DB, buckets, succeededHosts.size);
   }
 
   if (report.jobsDeferred > 0) {

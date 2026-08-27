@@ -321,42 +321,84 @@ That measurement makes the platform question much less interesting than expected
 | Requests | ~44k/month cron, plus web traffic | 10M/month | under 1% |
 | CPU | 0.1M to 0.56M ms/month | 30M ms/month | under 2% |
 | CPU per cron tick | 2.3 ms typical, 11.5 ms worst case | 30,000 ms | negligible |
-| D1 rows written | ~720k/month | 50M/month | 1.5% |
+| D1 rows written | ~15M/month | 50M/month | 30% |
 | D1 rows read | indexed window queries | 25B/month | negligible |
 | D1 storage | under 1 GB | 5 GB | under 20% |
 
-On Workers Paid this workload disappears into the included allowances. It adds
-nothing to the five dollar subscription.
+On Workers Paid this workload adds nothing to the five dollar subscription. Every
+line except writes disappears into the allowances.
 
-### The free tier is viable too, with one adjustment
+### Writes are the one budget that needs watching
 
-The binding free-tier limit is 10 ms of CPU per cron trigger. A typical tick
-costs 2.3 ms, because `min_id` cursors mean most polls return little or nothing.
-A tick where every one of 43 polls returns a full 40 statuses costs 11.5 ms, and
-that tick would be terminated.
+An earlier version of this section put writes at 720,000 a month, which was wrong
+by a factor of twenty. It counted observation inserts and missed four other write
+paths entirely. Measured on the live index, at fourteen tracked tags:
 
-The fix is a per-tick parse budget rather than a smaller design. The collector
-counts bytes as it goes, stops parsing at a configured ceiling, and leaves the
-remaining polls for the next tick. Cursors make deferral safe, because nothing is
-lost by reading a tag a minute later. With that cap in place every free-tier
-limit is satisfied:
-
-| Free-tier limit | Value | Needed |
+| Write path | Rows/day | Why |
 |---|---|---|
-| CPU per cron trigger | 10 ms | 2.3 ms typical, capped below 10 ms |
+| `poll_log` | ~159,000 | 39,720 inserts, one index, plus expiry deletes |
+| `observation` | ~126,000 | inserts, deletes, one index each, plus mask updates |
+| `cursor` | ~99,000 | one upsert per tag per poll |
+| `tag_candidate` | ~50-86,000 | capped per tick |
+| `tag_minute` | ~30,000 | only the buckets a tick touched |
+| `instance` | ~13,000 | health after every poll |
+| **Total** | **~480-510,000** | **~15M/month, 30% of the allowance** |
+
+Two things in that table are worth keeping in mind. Every index costs a written
+row on each insert and each delete, which is why this service runs three indexes
+and not six: an index serving only an hourly sweep is not worth two writes on
+every row, given the read allowance is 25 billion a month against a write
+allowance of 50 million.
+
+And the figures scale with the tracked set, capped at 150 against the fourteen
+measured here. At the ceiling the total lands around 40 to 45 million a month,
+inside the allowance but without much room. The dial to reach for first is
+`MAX_CANDIDATE_WRITES_PER_TICK`, then the cron interval.
+
+### The free tier needs a smaller service, not a tweak
+
+This section previously claimed the free tier worked with one adjustment. It does
+not, and the reason is writes rather than CPU.
+
+CPU is genuinely fine. A typical tick costs 2.3 ms against the free limit of
+10 ms per cron trigger, because `min_id` cursors mean most polls return little.
+Only a tick where all 43 polls return a full 40 statuses exceeds it, at 11.5 ms,
+and the per-tick parse budget handles that by deferring the remainder to the next
+tick, which cursors make safe.
+
+Writes are the problem. At roughly 480,000 a day against a free allowance of
+100,000, the default configuration is about five times over.
+
+| Free-tier limit | Value | Default config needs |
+|---|---|---|
+| CPU per cron trigger | 10 ms | 2.3 ms typical, capped below 10 |
 | External subrequests per invocation | 50 | 43 collect + 5 probe |
-| D1 rows written | 100,000/day | ~24,000/day |
 | Requests | 100,000/day | 1,440 cron, plus web traffic |
+| **D1 rows written** | **100,000/day** | **~480,000/day** |
 
-So the service can run for nothing, and runs with more headroom on Workers Paid.
-The parse budget is a configuration value in both cases, and the status page
-reports which plan and which budget are in effect.
+Worth being precise about what going over means: the D1 free tier blocks rather
+than bills. Exceeding the write limit returns an error until midnight UTC, so the
+consequence is a collector that stops, not a bill. There is no overage charge on
+the free plan.
 
-One unknown remains, and it is not about cost. Mastodon rate-limits
-unauthenticated requests per IP, and a Worker egresses from shared Cloudflare
-addresses. The index may share a bucket with unrelated traffic, and some
-instances throttle datacentre ranges. This must be measured from a deployed
-Worker before the instance list is fixed.
+A genuinely free deployment is possible, but it is a smaller service. A
+five-minute cron divides everything by five, and setting
+`MAX_CANDIDATE_WRITES_PER_TICK` to zero turns discovery off. That lands around
+80,000 writes a day, inside the limit, at the cost of five-minute latency and no
+tag discovery. Whether that is worth running is a judgement call, and it should be
+made deliberately rather than discovered when collection stops.
+
+### The egress question, answered
+
+The design carried an open worry that Mastodon rate-limits per IP while a Worker
+egresses from shared Cloudflare addresses, and that some instances throttle
+datacentre ranges. It could not be tested from a laptop.
+
+It has now been measured from the deployed Worker. Across 525 requests to nine
+servers there were no failures and no throttling, and reported headroom stayed
+between 247 and 292 of 300. Sharing Cloudflare's egress addresses caused no
+observable problem at this request rate. Worth re-checking if the instance list
+grows, but it is no longer an unknown.
 
 ## Aggregation
 
