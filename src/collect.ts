@@ -161,7 +161,14 @@ export async function collectTick(env: Env, now: number): Promise<TickReport> {
   // Tags seen on collected posts that the index is not yet tracking. This is
   // the discovery pool, and it costs nothing to gather: the request has already
   // been paid for and the tags are sitting in the response.
-  const candidates = new Map<string, { authors: Map<string, Uint8Array>; occurrences: number }>();
+  const candidates = new Map<
+    string,
+    {
+      /** One entry per author, carrying where they posted from and how many tags. */
+      authors: Map<string, { hash: Uint8Array; originHost: string; tagsOnPost: number }>;
+      occurrences: number;
+    }
+  >();
   const cursorPatches: CursorPatch[] = [];
   const pollEntries: PollLogEntry[] = [];
   const failuresByHost = new Map<string, number>();
@@ -256,14 +263,19 @@ export async function collectTick(env: Env, now: number): Promise<TickReport> {
             // Not tracked, so it becomes a discovery candidate rather than being
             // thrown away. Authors are deduplicated by hash within the tick, so
             // one person using a tag three times counts once.
+            const sighting = {
+              hash: post.authorHash,
+              originHost: post.originHost,
+              tagsOnPost: post.tags.length,
+            };
             const entry = candidates.get(name);
             if (entry === undefined) {
               candidates.set(name, {
-                authors: new Map([[hashKey(post.authorHash), post.authorHash]]),
+                authors: new Map([[hashKey(post.authorHash), sighting]]),
                 occurrences: 1,
               });
             } else {
-              entry.authors.set(hashKey(post.authorHash), post.authorHash);
+              entry.authors.set(hashKey(post.authorHash), sighting);
               entry.occurrences += 1;
             }
             continue;
@@ -305,15 +317,25 @@ export async function collectTick(env: Env, now: number): Promise<TickReport> {
   // total. Tags that appeared most often in this tick go first, on the grounds
   // that a tag showing up repeatedly is likelier to matter than one seen once.
   report.candidatesSeen = candidates.size;
-  const candidateWrites: { name: string; authorHash: Uint8Array }[] = [];
+  const candidateWrites: {
+    name: string;
+    authorHash: Uint8Array;
+    originHost: string;
+    tagsOnPost: number;
+  }[] = [];
   const ranked = [...candidates.entries()].sort(
     (a, b) => b[1].occurrences - a[1].occurrences || a[0].localeCompare(b[0]),
   );
   for (const [name, entry] of ranked) {
     if (candidateWrites.length >= config.maxCandidateWrites) break;
-    for (const authorHash of entry.authors.values()) {
+    for (const sighting of entry.authors.values()) {
       if (candidateWrites.length >= config.maxCandidateWrites) break;
-      candidateWrites.push({ name, authorHash });
+      candidateWrites.push({
+        name,
+        authorHash: sighting.hash,
+        originHost: sighting.originHost,
+        tagsOnPost: sighting.tagsOnPost,
+      });
     }
   }
   report.candidatesWritten = candidateWrites.length;

@@ -312,3 +312,59 @@ better candidates are queued behind the ceiling and will still be there.
 **Also worth noting.** The queue is evidence the pool works. `strongest_candidate`
 reached 52 distinct authors, well above the threshold, so the raw discovery
 mechanism is finding plenty. The problem is purely which candidates get in.
+
+## 16. Promotion gates on origin-server breadth, not author count alone
+*28 August 2026, closing the problem opened in decision 15*
+
+**Decision.** A candidate needs at least 5 distinct authors *and* at least 4
+distinct origin servers to be promoted. Rank survivors by server breadth rather
+than author count. Apply the same threshold retroactively, so tags admitted before
+it existed are re-judged. Record mean hashtags per post but do not enforce it.
+
+**Why breadth and not something else.** Three candidate signals were checked
+against the live figures before choosing:
+
+| Tag | Authors | Posts/author | Origin servers |
+|---|---|---|---|
+| `#headlines` | 60 | 6.3 | 2 |
+| `#topstories` | 23 | 9.5 | 3 |
+| `#featurednews` | 14 | 14.1 | 2 |
+| `#news` (genuine) | 249 | 6.5 | 69 |
+| `#photography` | 161 | 1.5 | 65 |
+
+Author count fails: `#headlines` has sixty. Posts per author fails too, and this is
+the interesting one, because it is the signal that sounds most obviously right:
+`#news` at 6.5 is legitimate and `#headlines` at 6.3 is a farm, so the metric
+cannot separate them at all. Origin-server count separates them with no overlap
+whatsoever, 1 to 3 against 31 to 69.
+
+A floor of 4 excludes every problem tag found and no genuine one. That absence of
+overlap is why it is a hard floor: nothing legitimate was near it, so there is no
+judgement call to soften.
+
+**Why ranking changed too.** Among candidates that clear both floors, breadth
+decides. A tag alive on forty servers is a topic moving across the network, which
+is what this index exists to measure; a tag with more authors on five servers is a
+smaller thing. With slots scarce the broader one should win.
+
+**Cost.** A hashtag used entirely within one instance's community is excluded,
+however healthy. Defensible for an index of activity *across* the network, since
+such a tag is a local timeline rather than federated activity and would be visible
+only if that server happened to be monitored. Still a real trade-off, and it is
+stated on the public coverage page rather than buried here.
+
+**Retroactive by necessity, not neatness.** The farms already admitted are busy, so
+the quiet-tag rule would never have reached them and they would have held scarce
+slots indefinitely while ninety-odd candidates queued. Retirement therefore judges
+tracked tags on the same threshold, guarded by a minimum post count so a new tag is
+not retired for having narrow breadth when it simply has few posts.
+
+**Instrumented, not enforced.** Mean hashtags per post is recorded and published on
+the tags page and the API. It is the obvious second signal, and would catch a farm
+spread across enough servers to pass the floor. That has not been observed, so it
+is measured rather than acted on. Guessing a threshold without data is how the
+first version of this rule let the news feeds through.
+
+**Documented publicly.** The reasoning, the figures and the trade-off are on the
+coverage page under "How tags are chosen", because an index that asks to be trusted
+about what it counts should also explain what it chooses to watch.

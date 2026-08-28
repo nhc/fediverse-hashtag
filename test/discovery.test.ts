@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_GRACE_SECONDS,
+  DEFAULT_MIN_ORIGIN_SERVERS,
+  looksLikeTagSpam,
   MAX_TRACKED_TAGS,
+  selectNonCommunityRetirements,
   selectExcessRetirements,
   selectPromotionsWithQueried,
   postsPerAuthor,
@@ -15,8 +18,17 @@ import {
 const NOW = 1_787_788_800;
 const DAY = 86_400;
 
-function candidate(name: string, distinctAuthors: number, firstSeen = NOW - 3600): Candidate {
-  return { name, distinctAuthors, firstSeen };
+/**
+ * Server breadth defaults to a comfortably passing value, so tests written about
+ * the author floor keep testing the author floor. Breadth has its own tests.
+ */
+function candidate(
+  name: string,
+  distinctAuthors: number,
+  distinctOriginServers = 20,
+  meanTagsPerPost: number | null = 3,
+): Candidate {
+  return { name, distinctAuthors, distinctOriginServers, meanTagsPerPost, firstSeen: NOW - 3600 };
 }
 
 function tracked(overrides: Partial<TrackedTag> = {}): TrackedTag {
@@ -306,5 +318,115 @@ describe('selectExcessRetirements', () => {
 
   it('exports a ceiling the search path and promoter share', () => {
     expect(MAX_TRACKED_TAGS).toBe(50);
+  });
+});
+
+describe('the origin-server floor', () => {
+  const limits = { now: NOW, trackedCount: 0, maxTracked: 10 };
+
+  it('refuses a news farm that clears the author floor', () => {
+    // #headlines as measured live: 60 distinct authors, but on 2 servers. The
+    // author floor passes it, which is exactly the hole this closes.
+    expect(selectPromotions([candidate('headlines', 60, 2)], limits)).toEqual([]);
+  });
+
+  it('refuses the other farms found live, on their real figures', () => {
+    const farms = [
+      candidate('featurednews', 14, 2),
+      candidate('topstories', 23, 3),
+      candidate('republiquefrancaise', 17, 1),
+      candidate('actualites', 20, 2),
+    ];
+    expect(selectPromotions(farms, limits)).toEqual([]);
+  });
+
+  it('admits the genuine communities found live, on their real figures', () => {
+    const real = [
+      candidate('photography', 161, 65),
+      candidate('news', 249, 69),
+      candidate('music', 116, 49),
+    ];
+    expect(selectPromotions(real, limits).sort()).toEqual(['music', 'news', 'photography']);
+  });
+
+  it('ranks on server breadth rather than author count', () => {
+    // Breadth is what the index measures, and with slots scarce the tag alive
+    // across more of the network earns the slot.
+    const promoted = selectPromotions(
+      [candidate('deep', 200, 6), candidate('broad', 40, 50)],
+      { ...limits, maxTracked: 1 },
+    );
+    expect(promoted).toEqual(['broad']);
+  });
+
+  it('still applies the author floor, so breadth alone is not enough', () => {
+    expect(selectPromotions([candidate('thin', 2, 40)], limits)).toEqual([]);
+  });
+
+  it('sits exactly on the boundary as documented', () => {
+    expect(DEFAULT_MIN_ORIGIN_SERVERS).toBe(4);
+    expect(selectPromotions([candidate('edge', 10, 4)], limits)).toEqual(['edge']);
+    expect(selectPromotions([candidate('edge', 10, 3)], limits)).toEqual([]);
+  });
+
+  it('can have the floor overridden', () => {
+    expect(
+      selectPromotions([candidate('local', 10, 1)], { ...limits, minOriginServers: 1 }),
+    ).toEqual(['local']);
+  });
+});
+
+describe('selectNonCommunityRetirements', () => {
+  const breadth = (o: Partial<Parameters<typeof selectNonCommunityRetirements>[0][number]> = {}) => ({
+    id: 1,
+    name: 'headlines',
+    postsLast24h: 375,
+    originServersLast24h: 2,
+    lastQueryAt: null,
+    ...o,
+  });
+
+  it('retires a busy tag that turns out to be a publisher', () => {
+    // The reason this exists. The farms already admitted are busy, so the
+    // quiet-tag rule would never touch them and they would hold slots forever.
+    expect(selectNonCommunityRetirements([breadth()], { now: NOW })).toEqual([1]);
+  });
+
+  it('keeps a broad tag however busy', () => {
+    expect(
+      selectNonCommunityRetirements([breadth({ originServersLast24h: 65 })], { now: NOW }),
+    ).toEqual([]);
+  });
+
+  it('will not judge a tag with too few posts to judge on', () => {
+    // Narrow breadth on three posts means the tag is new, not that it is a
+    // broadcast. Retiring for that would punish quiet tags for being quiet.
+    expect(
+      selectNonCommunityRetirements([breadth({ postsLast24h: 3 })], { now: NOW }),
+    ).toEqual([]);
+  });
+
+  it('never retires a tag somebody asked about recently', () => {
+    expect(
+      selectNonCommunityRetirements([breadth({ lastQueryAt: NOW - 60 })], { now: NOW }),
+    ).toEqual([]);
+  });
+
+  it('retires one whose request has gone stale', () => {
+    expect(
+      selectNonCommunityRetirements([breadth({ lastQueryAt: NOW - 30 * DAY })], { now: NOW }),
+    ).toEqual([1]);
+  });
+});
+
+describe('looksLikeTagSpam', () => {
+  it('flags a broadcast template but not a person tagging generously', () => {
+    expect(looksLikeTagSpam(14)).toBe(true);
+    expect(looksLikeTagSpam(4)).toBe(false);
+    expect(looksLikeTagSpam(9)).toBe(false);
+  });
+
+  it('says nothing when there is nothing to judge', () => {
+    expect(looksLikeTagSpam(null)).toBe(false);
   });
 });

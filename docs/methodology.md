@@ -111,6 +111,73 @@ not due. Each tag page states its own polling interval, and that figure accounts
 for how often the collector actually runs rather than only what the tag's tier
 asks for.
 
+## How tags are chosen
+
+The index polls a limited number of hashtags, because every tracked tag costs
+requests and database writes and the budget is fixed. Tags have to earn a slot,
+and some have to lose one.
+
+Most arrive by being noticed rather than asked for. A post collected for one
+hashtag usually carries others, and those become candidates at no extra cost,
+because the request has already been made.
+
+### Two thresholds, because one is not enough
+
+A candidate needs at least **5 distinct authors** and at least **4 distinct origin
+servers** before it is polled.
+
+The author threshold stops a single enthusiastic account earning a slot by posting
+the same tag two hundred times. Counting distinct people rather than uses is what
+makes that impossible rather than merely unlikely.
+
+The server threshold was added after the first night of running, because the
+author threshold alone was not enough. An automated news feed running fifteen
+accounts on two servers has fifteen genuinely distinct authors, so by author count
+it looks exactly like a conversation. Ratios do not separate them either: a
+legitimate tag on this index ran at 6.5 posts per author and an automated feed at
+6.3.
+
+What separated them was the number of servers the posts came from.
+
+| Tag | Posts | Authors | Origin servers |
+|---|---|---|---|
+| an automated news feed | 197 | 14 | 2 |
+| another | 375 | 60 | 2 |
+| `#photography` | 234 | 161 | 65 |
+| `#news` | 1612 | 249 | 69 |
+
+Every automated tag sat at one to three servers, every genuine one at thirty-one
+to sixty-nine, with no overlap. That is why it is a firm threshold and not a
+weighting.
+
+### What the threshold costs
+
+It excludes hashtags used entirely within one server's own community, however
+healthy. For an index of activity across the network that is arguably right, since
+a single-server tag is that server's local timeline rather than federated activity,
+and this index would see it only if it happened to monitor that server. It remains
+a trade-off, and it is worth knowing if a tag you care about is absent.
+
+### Losing a slot
+
+A tag stops being polled when it has produced nothing for a day and nobody has
+asked about it for a week, or when it turns out to be a publisher rather than a
+community on the figures above. Both thresholds apply to tags already being polled
+and not only to new ones, so a tag admitted before a rule existed is judged by it
+too.
+
+A hashtag somebody asked about recently is never dropped. Someone watching a quiet
+tag is a good enough reason to keep watching it.
+
+### One signal recorded but not enforced
+
+The mean number of hashtags on the posts carrying a tag is measured and published.
+A post with fifteen hashtags is a broadcast; a person tagging usually manages
+three. This would catch an automated feed spread across enough servers to pass the
+threshold above, but that has not been observed, so it is measured rather than
+acted on. Guessing thresholds without data is how the first version of these rules
+admitted the news feeds.
+
 ## Hashtags not yet tracked
 
 The index tracks a limited set of hashtags, because request budget is finite.

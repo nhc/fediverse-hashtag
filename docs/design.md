@@ -515,6 +515,19 @@ Those co-occurring tags are the discovery surface, and they cost nothing extra t
 see, because the request has already been paid for. A single tick was measured
 seeing 469 distinct untracked tags.
 
+### Two thresholds: authors, and servers
+
+Promotion requires at least 5 distinct authors and at least 4 distinct origin
+servers. The second was added after the first night of running exposed why the
+first is not enough on its own, and the reasoning is in
+[decision 16](decisions.md) with the figures. In short: an automated news feed with
+fifteen accounts on two servers has fifteen genuinely distinct authors, so author
+count cannot see it, and neither can posts per author. Server breadth separates the
+two cases with no overlap.
+
+Both thresholds apply to tags already being polled as well as to candidates, so a
+tag admitted before a rule existed is judged by it rather than grandfathered in.
+
 ### Distinct authors, never use count
 
 Candidates are stored as one row per tag per author, so the row count per tag is

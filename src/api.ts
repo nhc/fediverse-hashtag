@@ -39,9 +39,12 @@ import {
 } from './db';
 import {
   DEFAULT_MIN_AUTHORS,
+  DEFAULT_MIN_ORIGIN_SERVERS,
+  looksLikeTagSpam,
   MAX_TRACKED_TAGS,
   postsPerAuthor,
   rankTags,
+  TAG_SPAM_ADVISORY,
   type DiscoveryOrder,
 } from './discovery';
 import { ensureTagHistory } from './history';
@@ -333,13 +336,31 @@ export async function buildTagsData(
     discovered: {
       count: discovered.length,
       note:
-        'Tags seen on collected posts that the index is not yet polling, with at ' +
-        `least ${DEFAULT_MIN_AUTHORS} distinct authors in the last 48 hours. These ` +
-        'have no windowed history yet. The strongest are promoted automatically ' +
-        'when a polling slot is free, and searching one promotes it immediately.',
+        'Tags seen on collected posts that the index is not yet polling. These have ' +
+        'no windowed history yet. Ones meeting both thresholds are promoted ' +
+        'automatically when a polling slot frees up.',
+      promotion_rule: {
+        min_distinct_authors: DEFAULT_MIN_AUTHORS,
+        min_distinct_origin_servers: DEFAULT_MIN_ORIGIN_SERVERS,
+        why:
+          'Two thresholds because one is not enough. Distinct authors stops a ' +
+          'single person posting repeatedly. Distinct origin servers stops a ' +
+          'publisher running many accounts on one or two servers, which the author ' +
+          'threshold alone counts as a crowd. Measured on this index, every tag ' +
+          'that turned out to be an automated news feed came from 1 to 3 servers ' +
+          'and every genuine community from 31 to 69.',
+        ranked_by: 'distinct origin servers, then distinct authors',
+        advisory_tag_spam_threshold: TAG_SPAM_ADVISORY,
+      },
       tags: discovered.map((candidate) => ({
         tag: candidate.name,
         authors_observed: candidate.distinctAuthors,
+        origin_servers: candidate.distinctOriginServers,
+        mean_tags_per_post: candidate.meanTagsPerPost,
+        looks_like_tag_spam: looksLikeTagSpam(candidate.meanTagsPerPost),
+        would_promote:
+          candidate.distinctAuthors >= DEFAULT_MIN_AUTHORS &&
+          candidate.distinctOriginServers >= DEFAULT_MIN_ORIGIN_SERVERS,
         first_seen: new Date(candidate.firstSeen * 1000).toISOString(),
         url: `/tag/${encodeURIComponent(candidate.name)}`,
       })),
@@ -501,6 +522,7 @@ export async function metaResponse(env: Env, now: number): Promise<Response> {
     discovery: {
       tracked: discovery.trackedCount,
       retired: discovery.retiredCount,
+      queued_awaiting_capacity: discovery.queuedCount,
       pool_names: discovery.poolNames,
       pool_rows: discovery.poolRows,
       strongest_candidate_authors: discovery.strongestAuthors,

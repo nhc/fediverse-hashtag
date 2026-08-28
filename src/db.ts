@@ -527,17 +527,22 @@ export async function hostsReportingForTag(
  */
 export async function recordCandidates(
   db: D1Database,
-  rows: readonly { name: string; authorHash: Uint8Array }[],
+  rows: readonly {
+    name: string;
+    authorHash: Uint8Array;
+    originHost: string;
+    tagsOnPost: number;
+  }[],
   now: number,
 ): Promise<void> {
   const statements = rows.map((row) =>
     db
       .prepare(
-        `INSERT INTO tag_candidate (name, author_hash, first_seen)
-         VALUES (?1, ?2, ?3)
+        `INSERT INTO tag_candidate (name, author_hash, first_seen, origin_host, tags_on_post)
+         VALUES (?1, ?2, ?3, ?4, ?5)
          ON CONFLICT(name, author_hash) DO NOTHING`,
       )
-      .bind(row.name, blob(row.authorHash), now),
+      .bind(row.name, blob(row.authorHash), now, row.originHost, row.tagsOnPost),
   );
   await runBatched(db, statements);
 }
@@ -554,27 +559,90 @@ export async function loadCandidates(
   since: number,
   minAuthors: number,
   limit = 50,
-): Promise<{ name: string; distinctAuthors: number; firstSeen: number }[]> {
+): Promise<
+  {
+    name: string;
+    distinctAuthors: number;
+    distinctOriginServers: number;
+    meanTagsPerPost: number | null;
+    firstSeen: number;
+  }[]
+> {
+  // Ordered by server breadth, matching how promotion ranks, so the LIMIT keeps
+  // the candidates most likely to be promoted rather than merely the loudest.
   const { results } = await db
     .prepare(
-      `SELECT c.name                AS name,
-              COUNT(*)              AS authors,
-              MIN(c.first_seen)     AS first_seen
+      `SELECT c.name                            AS name,
+              COUNT(*)                          AS authors,
+              COUNT(DISTINCT c.origin_host)     AS servers,
+              AVG(c.tags_on_post)               AS mean_tags,
+              MIN(c.first_seen)                 AS first_seen
          FROM tag_candidate c
         WHERE c.first_seen >= ?1
           AND c.name NOT IN (SELECT name FROM tag WHERE tracked = 1 OR blocked = 1)
         GROUP BY c.name
        HAVING COUNT(*) >= ?2
-        ORDER BY authors DESC, name ASC
+        ORDER BY servers DESC, authors DESC, name ASC
         LIMIT ?3`,
     )
     .bind(since, minAuthors, limit)
-    .all<{ name: string; authors: number; first_seen: number }>();
+    .all<{
+      name: string;
+      authors: number;
+      servers: number;
+      mean_tags: number | null;
+      first_seen: number;
+    }>();
 
   return (results ?? []).map((row) => ({
     name: row.name,
     distinctAuthors: row.authors,
+    distinctOriginServers: row.servers,
+    meanTagsPerPost: row.mean_tags === null ? null : Math.round(row.mean_tags * 10) / 10,
     firstSeen: row.first_seen,
+  }));
+}
+
+/**
+ * Tracked tags with their observed server breadth, for re-judging tags admitted
+ * before the origin floor existed.
+ *
+ * Read from observation rather than the candidate pool, because for a tracked tag
+ * the observations are the better evidence: they are the posts actually collected
+ * rather than sightings alongside something else.
+ */
+export async function trackedBreadth(
+  db: D1Database,
+  now: number,
+): Promise<
+  {
+    id: number;
+    name: string;
+    postsLast24h: number;
+    originServersLast24h: number;
+    lastQueryAt: number | null;
+  }[]
+> {
+  const { results } = await db
+    .prepare(
+      `SELECT t.id AS id, t.name AS name, t.last_query_at AS lastQueryAt,
+              COUNT(o.uri)                  AS posts,
+              COUNT(DISTINCT o.origin_host) AS servers
+         FROM tag t
+         LEFT JOIN observation o
+                ON o.tag_id = t.id AND o.is_boost = 0 AND o.created_at >= ?1
+        WHERE t.tracked = 1 AND t.blocked = 0
+        GROUP BY t.id`,
+    )
+    .bind(now - 86_400)
+    .all<{ id: number; name: string; lastQueryAt: number | null; posts: number; servers: number }>();
+
+  return (results ?? []).map((row) => ({
+    id: row.id,
+    name: row.name,
+    postsLast24h: row.posts,
+    originServersLast24h: row.servers,
+    lastQueryAt: row.lastQueryAt,
   }));
 }
 
@@ -704,6 +772,7 @@ export async function discoveryStats(
   readyToPromote: number;
   trackedCount: number;
   retiredCount: number;
+  queuedCount: number;
 }> {
   const pool = await db
     .prepare(
@@ -726,13 +795,17 @@ export async function discoveryStats(
     .bind(now - 48 * 3600)
     .first<{ strongest: number | null; ready: number | null }>();
 
+  // tracked = 0 covers two different situations and they must not be conflated:
+  // a tag that was polled and gave its slot back, and a tag somebody asked for
+  // that never got a slot because the index was full. retired_at tells them apart.
   const tags = await db
     .prepare(
       `SELECT SUM(CASE WHEN tracked = 1 THEN 1 ELSE 0 END) AS tracked,
-              SUM(CASE WHEN tracked = 0 THEN 1 ELSE 0 END) AS retired
+              SUM(CASE WHEN tracked = 0 AND retired_at IS NOT NULL THEN 1 ELSE 0 END) AS retired,
+              SUM(CASE WHEN tracked = 0 AND retired_at IS NULL THEN 1 ELSE 0 END) AS queued
          FROM tag WHERE blocked = 0`,
     )
-    .first<{ tracked: number | null; retired: number | null }>();
+    .first<{ tracked: number | null; retired: number | null; queued: number | null }>();
 
   return {
     poolNames: pool?.names ?? 0,
@@ -741,6 +814,7 @@ export async function discoveryStats(
     readyToPromote: strength?.ready ?? 0,
     trackedCount: tags?.tracked ?? 0,
     retiredCount: tags?.retired ?? 0,
+    queuedCount: tags?.queued ?? 0,
   };
 }
 

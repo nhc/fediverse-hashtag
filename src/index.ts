@@ -36,12 +36,14 @@ import {
   setTagTier,
   sweep,
   timeseries,
+  trackedBreadth,
   trackedForRetirement,
 } from './db';
 import {
   DEFAULT_MIN_AUTHORS,
   MAX_TRACKED_TAGS,
   selectExcessRetirements,
+  selectNonCommunityRetirements,
   selectPromotionsWithQueried,
   selectRetirements,
 } from './discovery';
@@ -363,23 +365,40 @@ async function renderStatusPage(env: Env, now: number): Promise<Response> {
  * a new one can have it.
  */
 async function runDiscovery(env: Env, now: number): Promise<void> {
-  const tracked = await trackedForRetirement(env.DB, now);
+  const [tracked, breadth] = await Promise.all([
+    trackedForRetirement(env.DB, now),
+    trackedBreadth(env.DB, now),
+  ]);
 
   // Retire first, so slots freed this round are available to promote into.
   const quiet = selectRetirements(tracked, { now });
+
+  // Then tags that turned out to be publishers rather than communities. The
+  // origin floor has to work backwards too: the farms admitted before the rule
+  // existed are busy, so the quiet rule would never reach them and they would
+  // hold scarce slots while genuine candidates queue behind.
+  const narrow = selectNonCommunityRetirements(breadth, { now }).filter(
+    (id) => !quiet.includes(id),
+  );
 
   // Then bring the set back to the ceiling if it is over. This is what makes the
   // ceiling an actual limit rather than only a brake on promotion: it can be
   // breached by other paths, and lowering it should take effect rather than just
   // stopping growth.
-  const remaining = tracked.filter((tag) => !quiet.includes(tag.id));
+  const dropped = new Set([...quiet, ...narrow]);
+  const remaining = tracked.filter((tag) => !dropped.has(tag.id));
   const excess = selectExcessRetirements(remaining, { now, maxTracked: MAX_TRACKED_TAGS });
 
-  const retiring = [...quiet, ...excess];
+  const retiring = [...quiet, ...narrow, ...excess];
   if (retiring.length > 0) {
     await retireTags(env.DB, retiring, now);
     console.log(
-      JSON.stringify({ event: 'retire', quiet: quiet.length, overCeiling: excess.length }),
+      JSON.stringify({
+        event: 'retire',
+        quiet: quiet.length,
+        notCommunity: narrow.length,
+        overCeiling: excess.length,
+      }),
     );
   }
 
@@ -421,7 +440,15 @@ async function renderTagsPage(env: Env, now: number, url: URL): Promise<Response
   };
   const discovered = data['discovered'] as {
     note: string;
-    tags: { tag: string; authors_observed: number }[];
+    promotion_rule: { min_distinct_authors: number; min_distinct_origin_servers: number; why: string };
+    tags: {
+      tag: string;
+      authors_observed: number;
+      origin_servers: number;
+      mean_tags_per_post: number | null;
+      looks_like_tag_spam: boolean;
+      would_promote: boolean;
+    }[];
   };
 
   const view: TagsView = {
@@ -445,7 +472,16 @@ async function renderTagsPage(env: Env, now: number, url: URL): Promise<Response
     discovered: discovered.tags.map((tag) => ({
       tag: tag.tag,
       authorsObserved: tag.authors_observed,
+      originServers: tag.origin_servers,
+      meanTagsPerPost: tag.mean_tags_per_post,
+      wouldPromote: tag.would_promote,
+      looksLikeTagSpam: tag.looks_like_tag_spam,
     })),
+    promotionRule: {
+      minAuthors: discovered.promotion_rule.min_distinct_authors,
+      minOriginServers: discovered.promotion_rule.min_distinct_origin_servers,
+      why: discovered.promotion_rule.why,
+    },
   };
 
   return html(tagsPage(view), 200, 30);
