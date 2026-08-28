@@ -73,6 +73,9 @@ th { color: var(--muted); font-weight: 600; font-size: .78rem; text-transform: u
 td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .scroll { overflow-x: auto; }
 .note { font-size: .85rem; color: var(--muted); }
+.webmcp-compare { border: 1px solid var(--line); border-radius: 6px; padding: 1rem 1.25rem; margin: 0 0 2rem; }
+.webmcp-compare h2 { margin-top: 0; }
+.spark { display: block; color: var(--accent, currentColor); }
 ul.limits { padding-left: 1.1rem; font-size: .9rem; color: var(--muted); }
 ul.limits li { margin: .35rem 0; }
 code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .85em; }
@@ -970,6 +973,8 @@ The design, and why the tools look the way they do, is in the repository under
   <li><code>trending_hashtags</code>: the busiest tracked tags in the last hour,
   ranked by distinct authors, each with a trend that says when it cannot be
   compared. Read-only.</li>
+  <li><code>compare_hashtags</code>: two to four hashtags side by side, rendered
+  into the page you are looking at as well as returned to the agent. Read-only.</li>
 </ul>
 <p class="note">Try asking your agent, on any page of this site: “I’m writing a
 post, which hashtags fit it best?” followed by the draft.</p>

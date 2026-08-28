@@ -90,7 +90,122 @@ export const WEBMCP_SCRIPT = `
     }
   };
 
-  var tools = [evaluateHashtags, trendingHashtags];
+  // Renders into the page as well as returning data, so the person and the
+  // agent look at the same table. Figures come from /api/v1/evaluate (nothing
+  // registered) and the sparklines from /timeseries (read-only). No server code.
+  function esc(v) {
+    return String(v).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function hourlyBars(points) {
+    var buckets = new Array(24).fill(0);
+    if (!points || !points.length) return buckets;
+    var last = Date.parse(points[points.length - 1].at);
+    points.forEach(function (p) {
+      var ageH = Math.floor((last - Date.parse(p.at)) / 3600000);
+      if (ageH >= 0 && ageH < 24) buckets[23 - ageH] += p.posts_observed;
+    });
+    return buckets;
+  }
+  function sparkline(bars) {
+    var max = Math.max.apply(null, bars.concat([1]));
+    var w = 120, h = 28, bw = w / bars.length;
+    var rects = bars.map(function (v, i) {
+      var bh = Math.max(1, Math.round((v / max) * (h - 2)));
+      return '<rect x="' + (i * bw).toFixed(1) + '" y="' + (h - bh) + '" width="' + (bw - 1).toFixed(1) + '" height="' + bh + '" fill="currentColor" opacity="' + (i === bars.length - 1 ? 1 : 0.55) + '"/>';
+    }).join('');
+    return '<svg class="spark" viewBox="0 0 ' + w + ' ' + h + '" width="' + w + '" height="' + h + '" role="img" aria-label="posts per hour, last 24 hours">' + rects + '</svg>';
+  }
+  function fmt(v) { return v === null || v === undefined ? '—' : String(v); }
+
+  function renderComparison(data, series) {
+    var main = document.querySelector('main') || document.body;
+    var old = document.getElementById('webmcp-compare');
+    if (old) old.remove();
+    var rows = data.candidates.map(function (c) {
+      var bars = series[c.tag] ? hourlyBars(series[c.tag].points) : null;
+      var sr = c.server_reported;
+      return '<tr>' +
+        '<td><a href="/tag/' + encodeURIComponent(c.tag) + '">#' + esc(c.display) + '</a></td>' +
+        '<td>' + esc(c.standing) + '</td>' +
+        '<td>' + fmt(c.authors_24h) + (sr ? '<br><span class="note">' + esc(sr.accounts_7d) + ' server-reported, 7 days</span>' : '') + '</td>' +
+        '<td>' + fmt(c.posts_24h) + '</td>' +
+        '<td>' + fmt(c.origin_servers_24h) + '</td>' +
+        '<td>' + fmt(c.posts_per_author) + '</td>' +
+        '<td>' + fmt(c.authors_1h) + '</td>' +
+        '<td>' + (bars ? sparkline(bars) : '<span class="note">not polled</span>') + '</td>' +
+        '</tr>';
+    }).join('');
+    var section = document.createElement('section');
+    section.id = 'webmcp-compare';
+    section.className = 'webmcp-compare';
+    section.innerHTML =
+      '<h2>Comparison, placed here by your agent</h2>' +
+      '<p class="note">' + esc(data.statement) + ' As of ' + esc(data.as_of) + '. ' +
+      esc(data.provenance.instances_monitored) + ' servers monitored, ' + esc(data.provenance.instances_healthy) + ' healthy. Nothing was registered by this comparison.</p>' +
+      '<div class="scroll"><table><thead><tr><th>Tag</th><th>Standing</th><th>Accounts, 24h</th><th>Posts, 24h</th><th>Servers</th><th>Posts / author</th><th>Accounts, last hour</th><th>Posts per hour, 24h</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table></div>' +
+      '<p class="note">' + esc(data.note) + '</p>';
+    main.insertBefore(section, main.firstChild);
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  var compareHashtags = {
+    name: 'compare_hashtags',
+    description:
+      'Compare two to four hashtags side by side and render the comparison into ' +
+      'the page the person is looking at, so you both see the same table: ' +
+      'accounts and posts over 24 hours, server reach, posts per author, the last ' +
+      'hour, and a posts-per-hour sparkline for tags this index polls. Uses the ' +
+      'same evidence as evaluate_hashtags, including standing (tracked, ' +
+      'discovered, unseen) and server-reported counters for unseen tags; a fair ' +
+      'comparison needs the tags to have similar standing, and the result says ' +
+      'when they do not. Registers nothing. After calling, tell the person the ' +
+      'comparison is on the page.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tags: { type: 'array', items: { type: 'string' }, minItems: 2, maxItems: 4,
+                description: 'Hashtags to compare, with or without the leading #.' }
+      },
+      required: ['tags']
+    },
+    async execute(args) {
+      if (typeof args === 'string') { try { args = JSON.parse(args); } catch (e) { args = {}; } }
+      var list = Array.isArray(args && args.tags) ? args.tags.slice(0, 4) : [];
+      var res = await fetch('/api/v1/evaluate?tags=' + encodeURIComponent(list.join(',')),
+        { headers: { 'x-webmcp-tool': 'compare_hashtags' } });
+      var data = await res.json();
+      if (!data.candidates) return asText(data);
+      var series = {};
+      await Promise.all(data.candidates.filter(function (c) { return c.standing === 'tracked'; }).map(async function (c) {
+        try {
+          var r = await fetch('/api/v1/tags/' + encodeURIComponent(c.tag) + '/timeseries');
+          if (r.ok) series[c.tag] = await r.json();
+        } catch (e) {}
+      }));
+      var standings = {};
+      data.candidates.forEach(function (c) { standings[c.standing] = true; });
+      var mixed = Object.keys(standings).length > 1;
+      try { renderComparison(data, series); } catch (e) {}
+      return asText({
+        rendered_in_page: true,
+        anchor: '#webmcp-compare',
+        comparable: !mixed,
+        comparability_note: mixed
+          ? 'The tags have different standings with this index, so their figures come from different kinds of evidence and are not directly comparable. Say so.'
+          : 'All tags have the same standing, so the figures are like for like.',
+        as_of: data.as_of,
+        statement: data.statement,
+        side_effects: data.side_effects,
+        candidates: data.candidates,
+        provenance: data.provenance
+      });
+    }
+  };
+
+  var tools = [evaluateHashtags, trendingHashtags, compareHashtags];
 
   function register() {
     if (registered) return;
