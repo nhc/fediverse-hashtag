@@ -33,8 +33,11 @@ export const WEBMCP_SCRIPT = `
   var evaluateHashtags = {
     name: 'evaluate_hashtags',
     description:
-      'Check hashtags a person is thinking of using against what this index has ' +
-      'observed on the Mastodon-compatible servers it monitors. You supply the ' +
+      'Evaluate hashtags a person is thinking of using for a post, against what ' +
+      'this index has observed on the Mastodon-compatible servers it monitors. ' +
+      'Use this for "which hashtags should I use" questions. If the person asks ' +
+      'to COMPARE tags, use compare_hashtags instead: it shows the comparison on ' +
+      'the page as well. You supply the ' +
       'candidates (read the draft and propose them yourself; the index stores no ' +
       'post content and cannot judge fit). For each one it returns how many ' +
       'distinct accounts used it in 24 hours, how many servers it reaches, and ' +
@@ -141,21 +144,43 @@ export const WEBMCP_SCRIPT = `
     section.id = 'webmcp-compare';
     section.className = 'webmcp-compare';
     section.innerHTML =
-      '<h2>Comparison, placed here by your agent</h2>' +
+      '<h2>Comparison, placed here by your agent <button type="button" class="webmcp-dismiss" aria-label="Remove comparison">Remove</button></h2>' +
       '<p class="note">' + esc(data.statement) + ' As of ' + esc(data.as_of) + '. ' +
       esc(data.provenance.instances_monitored) + ' servers monitored, ' + esc(data.provenance.instances_healthy) + ' healthy. Nothing was registered by this comparison.</p>' +
       '<div class="scroll"><table><thead><tr><th>Tag</th><th>Standing</th><th>Accounts, 24h</th><th>Posts, 24h</th><th>Servers</th><th>Posts / author</th><th>Accounts, last hour</th><th>Posts per hour, 24h</th></tr></thead>' +
       '<tbody>' + rows + '</tbody></table></div>' +
       '<p class="note">' + esc(data.note) + '</p>';
+    section.querySelector('.webmcp-dismiss').addEventListener('click', function () {
+      section.remove();
+      try { sessionStorage.removeItem('webmcp-compare'); } catch (e) {}
+    });
     main.insertBefore(section, main.firstChild);
     section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // The agent may navigate after calling. Keep the comparison for the next
+    // page in this tab, once, so what it told the person is on the page is.
+    try { sessionStorage.setItem('webmcp-compare', JSON.stringify({ data: data, series: series, at: Date.now() })); } catch (e) {}
   }
+
+  function restoreComparison() {
+    try {
+      var raw = sessionStorage.getItem('webmcp-compare');
+      if (!raw) return;
+      var saved = JSON.parse(raw);
+      // Ten minutes, and never on the page that drew it (it is already there).
+      if (Date.now() - saved.at > 600000 || document.getElementById('webmcp-compare')) return;
+      renderComparison(saved.data, saved.series);
+    } catch (e) {}
+  }
+  if (document.readyState === 'loading') window.addEventListener('DOMContentLoaded', restoreComparison);
+  else restoreComparison();
 
   var compareHashtags = {
     name: 'compare_hashtags',
     description:
-      'Compare two to four hashtags side by side and render the comparison into ' +
-      'the page the person is looking at, so you both see the same table: ' +
+      'COMPARE two to four hashtags. Use this whenever the person says compare, ' +
+      'versus, side by side, or asks which of several tags is busier. It renders ' +
+      'a comparison table into the page the person is looking at, so you both ' +
+      'see the same thing (evaluate_hashtags does not do this): ' +
       'accounts and posts over 24 hours, server reach, posts per author, the last ' +
       'hour, and a posts-per-hour sparkline for tags this index polls. Uses the ' +
       'same evidence as evaluate_hashtags, including standing (tracked, ' +

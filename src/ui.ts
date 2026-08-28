@@ -74,7 +74,8 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .scroll { overflow-x: auto; }
 .note { font-size: .85rem; color: var(--muted); }
 .webmcp-compare { border: 1px solid var(--line); border-radius: 6px; padding: 1rem 1.25rem; margin: 0 0 2rem; }
-.webmcp-compare h2 { margin-top: 0; }
+.webmcp-compare h2 { margin-top: 0; display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
+.webmcp-dismiss { font: inherit; font-size: .8rem; background: none; border: 1px solid var(--line); border-radius: 4px; padding: .15rem .5rem; color: var(--muted); cursor: pointer; }
 .spark { display: block; color: var(--accent, currentColor); }
 ul.limits { padding-left: 1.1rem; font-size: .9rem; color: var(--muted); }
 ul.limits li { margin: .35rem 0; }
