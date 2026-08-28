@@ -20,6 +20,7 @@ import {
   weightedMedianPopcount,
 } from './aggregate';
 import {
+  countTrackedTags,
   discoveryStats,
   distinctOriginCount,
   findTag,
@@ -36,7 +37,13 @@ import {
   timeseries,
   windowCounts,
 } from './db';
-import { DEFAULT_MIN_AUTHORS, postsPerAuthor, rankTags, type DiscoveryOrder } from './discovery';
+import {
+  DEFAULT_MIN_AUTHORS,
+  MAX_TRACKED_TAGS,
+  postsPerAuthor,
+  rankTags,
+  type DiscoveryOrder,
+} from './discovery';
 import { ensureTagHistory } from './history';
 import { casefoldTag } from './normalise';
 import { isCollectable, isMonitored } from './registry';
@@ -125,9 +132,20 @@ export async function buildTagData(
   const name = normaliseTagInput(rawTag);
   if (name === null) return { error: 'not a usable hashtag', status: 400 };
 
-  // A search is a signal, not just a read. It registers an unknown tag for
-  // tracking and counts towards the tag earning a faster polling tier.
-  const tag = await registerTagQuery(env.DB, name, rawTag.replace(/^#/, ''), now);
+  // A search is a signal, not just a read. It registers an unknown tag and counts
+  // towards it earning a faster polling tier.
+  //
+  // Tracking is only granted if there is capacity. Without that check a search
+  // added a polled tag regardless of the ceiling, which meant the cap on running
+  // costs could be walked straight past by anybody crawling the public URL.
+  const trackedCount = await countTrackedTags(env.DB);
+  const tag = await registerTagQuery(
+    env.DB,
+    name,
+    rawTag.replace(/^#/, ''),
+    now,
+    trackedCount < MAX_TRACKED_TAGS,
+  );
   if (tag === null) return { error: 'could not register that hashtag', status: 500 };
 
   const instances = await loadInstances(env.DB);
@@ -172,6 +190,17 @@ export async function buildTagData(
     completeness: 'partial',
     statement: STATEMENT,
     tracking: {
+      // Said plainly, because a page that showed windows without saying the tag
+      // is unpolled would imply collection had started when it had not.
+      tracked: tag.tracked === 1,
+      capacity_note:
+        tag.tracked === 1
+          ? null
+          : `This index polls at most ${MAX_TRACKED_TAGS} hashtags at once and is ` +
+            'currently at that limit, so this one is not being collected yet. It has ' +
+            'been recorded as requested and goes to the front of the queue when a ' +
+            'slot frees up. The daily counters below come from the servers themselves ' +
+            'and are available regardless.',
       tier: tag.tier,
       poll_interval_seconds: effectivePollInterval(
         TIER_INTERVAL_SECONDS[tag.tier],

@@ -117,4 +117,7 @@ export interface TagRow {
   last_query_at: number | null;
   query_count: number;
   blocked: number;
+  /** 1 while the tag is being polled. Added by migration 0003. */
+  tracked: number;
+  retired_at: number | null;
 }

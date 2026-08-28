@@ -170,6 +170,8 @@ export interface TagView {
   tag: string;
   display: string;
   asOf: string;
+  tracked: boolean;
+  capacityNote: string | null;
   tier: string;
   pollIntervalSeconds: number;
   windows: WindowView[];
@@ -266,10 +268,19 @@ with the figures above.</p>
           .join('\n')}</tbody>
 </table></div>`;
 
+  const notTracked =
+    view.tracked || view.capacityNote === null
+      ? ''
+      : `<div class="panel" style="border-color:var(--warn);margin-bottom:1.25rem">
+  <strong>Not being collected yet.</strong>
+  <p style="margin:.4rem 0 0;font-size:.9rem">${escapeHtml(view.capacityNote)}</p>
+</div>`;
+
   return layout(
     `#${view.display} activity`,
     `<h1>#${escapeHtml(view.display)}</h1>
 <p class="statement">${escapeHtml(view.statement)}</p>
+${notTracked}
 
 <div class="layout">
   <div>
@@ -314,7 +325,11 @@ with the figures above.</p>
       <dt>Distinct origin servers</dt>
       <dd>${formatCount(view.uniqueOriginServers)}</dd>
       <dt>Polled every</dt>
-      <dd>${view.pollIntervalSeconds < 60 ? `${view.pollIntervalSeconds} seconds` : `${view.pollIntervalSeconds / 60} minutes`} (${escapeHtml(view.tier)} tier)</dd>
+      <dd>${
+        view.tracked
+          ? `${view.pollIntervalSeconds < 60 ? `${view.pollIntervalSeconds} seconds` : `${view.pollIntervalSeconds / 60} minutes`} (${escapeHtml(view.tier)} tier)`
+          : '<span class="unavailable">not polled, index at capacity</span>'
+      }</dd>
       <dt>Last successful update</dt>
       <dd>${
         view.lastSuccessfulUpdate === null

@@ -136,31 +136,74 @@ export async function findTag(db: D1Database, name: string): Promise<TagRow | nu
   return await db.prepare('SELECT * FROM tag WHERE name = ?1').bind(name).first<TagRow>();
 }
 
+/** How many tags are being polled right now. The ceiling is checked against this. */
+export async function countTrackedTags(db: D1Database): Promise<number> {
+  const row = await db
+    .prepare('SELECT COUNT(*) AS n FROM tag WHERE tracked = 1 AND blocked = 0')
+    .first<{ n: number | null }>();
+  return row?.n ?? 0;
+}
+
 /**
  * Register a tag if it is new, and record that somebody asked about it.
  *
  * Human interest is one of the two things that earns a tag a faster polling
  * tier, the other being observed volume, so a search is a signal and not just a
  * read.
+ *
+ * `allowTracking` is what stops a search bypassing the tracked-set ceiling. The
+ * first version of this left `tracked` to its column default of 1, so anybody
+ * who searched added a polled tag regardless of capacity, and a crawler on the
+ * public URL could have grown the set without limit. A tag registered with
+ * tracking refused is still recorded and still counted as interest, so it goes to
+ * the front of the queue when a slot frees up.
+ *
+ * On conflict `tracked` is deliberately left alone: searching must never quietly
+ * promote an untracked tag, nor retire a tracked one.
  */
 export async function registerTagQuery(
   db: D1Database,
   name: string,
   display: string,
   now: number,
+  allowTracking: boolean,
 ): Promise<TagRow | null> {
   await db
     .prepare(
-      `INSERT INTO tag (name, display, tier, first_seen_at, last_query_at, query_count)
-       VALUES (?1, ?2, 'cold', ?3, ?3, 1)
+      `INSERT INTO tag (name, display, tier, first_seen_at, last_query_at, query_count, tracked)
+       VALUES (?1, ?2, 'cold', ?3, ?3, 1, ?4)
        ON CONFLICT(name) DO UPDATE
           SET last_query_at = ?3,
               query_count   = query_count + 1,
               display       = COALESCE(tag.display, ?2)`,
     )
-    .bind(name, display, now)
+    .bind(name, display, now, allowTracking ? 1 : 0)
     .run();
   return await findTag(db, name);
+}
+
+/**
+ * Tags people have asked for that the index is not polling.
+ *
+ * These jump the queue at the next discovery pass, because somebody asking is a
+ * stronger signal than a tag turning up beside another one.
+ */
+export async function queriedUntrackedTags(
+  db: D1Database,
+  since: number,
+  limit = 50,
+): Promise<{ name: string; lastQueryAt: number; queryCount: number }[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT name, last_query_at AS lastQueryAt, query_count AS queryCount
+         FROM tag
+        WHERE tracked = 0 AND blocked = 0 AND last_query_at IS NOT NULL AND last_query_at >= ?1
+        ORDER BY last_query_at DESC, query_count DESC
+        LIMIT ?2`,
+    )
+    .bind(since, limit)
+    .all<{ name: string; lastQueryAt: number; queryCount: number }>();
+  return results ?? [];
 }
 
 export async function setTagTier(db: D1Database, tagId: number, tier: Tier): Promise<void> {

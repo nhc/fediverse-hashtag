@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_GRACE_SECONDS,
+  MAX_TRACKED_TAGS,
+  selectExcessRetirements,
+  selectPromotionsWithQueried,
   postsPerAuthor,
   rankTags,
   selectPromotions,
@@ -178,5 +181,130 @@ describe('postsPerAuthor', () => {
   it('is null with no authors, because that is not a ratio', () => {
     expect(postsPerAuthor(0, 0)).toBeNull();
     expect(postsPerAuthor(5, 0)).toBeNull();
+  });
+});
+
+describe('selectPromotionsWithQueried', () => {
+  const limits = { now: NOW, trackedCount: 10, maxTracked: 12 };
+
+  it('takes a tag somebody asked for ahead of a stronger pool candidate', () => {
+    // Somebody is waiting on the answer, and a pool candidate is not.
+    const promoted = selectPromotionsWithQueried(
+      [{ name: 'asked', lastQueryAt: NOW - 30, queryCount: 1 }],
+      [candidate('found', 90)],
+      { ...limits, maxTracked: 11 },
+    );
+    expect(promoted).toEqual(['asked']);
+  });
+
+  it('fills remaining slots from the pool once requests are satisfied', () => {
+    const promoted = selectPromotionsWithQueried(
+      [{ name: 'asked', lastQueryAt: NOW - 30, queryCount: 1 }],
+      [candidate('found', 90), candidate('weaker', 8)],
+      { now: NOW, trackedCount: 10, maxTracked: 13 },
+    );
+    expect(promoted).toEqual(['asked', 'found', 'weaker']);
+  });
+
+  it('promotes a requested tag even with no distinct-author evidence', () => {
+    // A request is its own justification. The author threshold exists to filter
+    // co-occurrence noise, and a human typing the tag is not that.
+    expect(
+      selectPromotionsWithQueried(
+        [{ name: 'obscure', lastQueryAt: NOW, queryCount: 1 }],
+        [],
+        limits,
+      ),
+    ).toEqual(['obscure']);
+  });
+
+  it('never exceeds the free slots', () => {
+    const asked = Array.from({ length: 20 }, (_, i) => ({
+      name: `t${i}`,
+      lastQueryAt: NOW - i,
+      queryCount: 1,
+    }));
+    expect(selectPromotionsWithQueried(asked, [], limits)).toHaveLength(2);
+  });
+
+  it('promotes nothing when full', () => {
+    expect(
+      selectPromotionsWithQueried(
+        [{ name: 'asked', lastQueryAt: NOW, queryCount: 1 }],
+        [candidate('found', 90)],
+        { now: NOW, trackedCount: 50, maxTracked: 50 },
+      ),
+    ).toEqual([]);
+  });
+
+  it('does not promote the same name twice from both sources', () => {
+    const promoted = selectPromotionsWithQueried(
+      [{ name: 'both', lastQueryAt: NOW, queryCount: 1 }],
+      [candidate('both', 90)],
+      { now: NOW, trackedCount: 10, maxTracked: 13 },
+    );
+    expect(promoted).toEqual(['both']);
+  });
+
+  it('honours the blocklist on requested tags too', () => {
+    expect(
+      selectPromotionsWithQueried(
+        [{ name: 'spam', lastQueryAt: NOW, queryCount: 99 }],
+        [],
+        { ...limits, blocked: new Set(['spam']) },
+      ),
+    ).toEqual([]);
+  });
+
+  it('prefers the most recently asked for', () => {
+    const promoted = selectPromotionsWithQueried(
+      [
+        { name: 'older', lastQueryAt: NOW - 600, queryCount: 5 },
+        { name: 'newer', lastQueryAt: NOW - 10, queryCount: 1 },
+      ],
+      [],
+      { now: NOW, trackedCount: 10, maxTracked: 11 },
+    );
+    expect(promoted).toEqual(['newer']);
+  });
+});
+
+describe('selectExcessRetirements', () => {
+  const many = (n: number, from = 0) =>
+    Array.from({ length: n }, (_, i) =>
+      tracked({ id: from + i + 1, name: `t${from + i}`, postsLast24h: i, lastQueryAt: null }),
+    );
+
+  it('does nothing when inside the ceiling', () => {
+    expect(selectExcessRetirements(many(10), { now: NOW, maxTracked: 50 })).toEqual([]);
+  });
+
+  it('drops exactly the overflow', () => {
+    // The case that caught this out live: the set reached 51 because a search
+    // bypassed the ceiling, and nothing brought it back down.
+    const ids = selectExcessRetirements(many(51), { now: NOW, maxTracked: 50 });
+    expect(ids).toHaveLength(1);
+  });
+
+  it('drops the quietest first', () => {
+    const ids = selectExcessRetirements(many(52), { now: NOW, maxTracked: 50 });
+    expect(ids).toEqual([1, 2]);
+  });
+
+  it('never drops a tag somebody asked about recently', () => {
+    const set = [
+      tracked({ id: 1, name: 'asked', postsLast24h: 0, lastQueryAt: NOW - 60 }),
+      tracked({ id: 2, name: 'quiet', postsLast24h: 1, lastQueryAt: null }),
+    ];
+    expect(selectExcessRetirements(set, { now: NOW, maxTracked: 1 })).toEqual([2]);
+  });
+
+  it('takes effect when the ceiling is lowered, not just when growth happens', () => {
+    const ids = selectExcessRetirements(many(50), { now: NOW, maxTracked: 25 });
+    expect(ids).toHaveLength(25);
+  });
+
+  it('exports a ceiling the search path and promoter share', () => {
+    expect(MAX_TRACKED_TAGS).toBe(50);
   });
 });

@@ -23,12 +23,14 @@ import {
 } from './api';
 import { collectTick, configFromEnv } from './collect';
 import {
+  countTrackedTags,
   healthSummary,
   loadCandidates,
   loadInstances,
   loadTags,
   postsPerHourByTag,
   promoteTag,
+  queriedUntrackedTags,
   representativePosts,
   retireTags,
   setTagTier,
@@ -38,7 +40,9 @@ import {
 } from './db';
 import {
   DEFAULT_MIN_AUTHORS,
-  selectPromotions,
+  MAX_TRACKED_TAGS,
+  selectExcessRetirements,
+  selectPromotionsWithQueried,
   selectRetirements,
 } from './discovery';
 import { probeOneDueInstance } from './probe';
@@ -67,16 +71,7 @@ import type { Env, Tier } from './types';
 const MAX_HOT_TAGS = 3;
 const MAX_WARM_TAGS = 40;
 
-/**
- * Ceiling on the tracked set.
- *
- * The request budget would allow roughly 150, but the write budget is the tighter
- * constraint and it is the one that costs money. At 150 tags the service would
- * write 40 to 45 million rows a month against 50 million included, on a plan
- * shared with other services. Fifty leaves real headroom and can be raised once
- * a week of live figures exists to raise it against.
- */
-const MAX_TRACKED_TAGS = 50;
+
 
 export default {
   async scheduled(_controller: ScheduledController, env: Env, _ctx: ExecutionContext): Promise<void> {
@@ -255,7 +250,12 @@ async function renderTagPage(env: Env, rawTag: string, now: number): Promise<Res
     unique_origin_servers: number;
     last_successful_update: string | null;
   };
-  const tracking = data['tracking'] as { tier: Tier; poll_interval_seconds: number };
+  const tracking = data['tracking'] as {
+    tier: Tier;
+    poll_interval_seconds: number;
+    tracked: boolean;
+    capacity_note: string | null;
+  };
   const dailyCounters = data['instance_daily_counters'] as
     | { days: TagView['dailyCounters'] }
     | null;
@@ -264,6 +264,8 @@ async function renderTagPage(env: Env, rawTag: string, now: number): Promise<Res
     tag: String(data['tag']),
     display: String(data['display']),
     asOf: String(data['as_of']),
+    tracked: tracking.tracked,
+    capacityNote: tracking.capacity_note,
     tier: tracking.tier,
     pollIntervalSeconds: tracking.poll_interval_seconds,
     windows: Object.entries(windows).map(([key, value]) => ({
@@ -361,18 +363,35 @@ async function renderStatusPage(env: Env, now: number): Promise<Response> {
  * a new one can have it.
  */
 async function runDiscovery(env: Env, now: number): Promise<void> {
-  // Retire first, so slots freed this round are available to promote into.
   const tracked = await trackedForRetirement(env.DB, now);
-  const retiring = selectRetirements(tracked, { now });
+
+  // Retire first, so slots freed this round are available to promote into.
+  const quiet = selectRetirements(tracked, { now });
+
+  // Then bring the set back to the ceiling if it is over. This is what makes the
+  // ceiling an actual limit rather than only a brake on promotion: it can be
+  // breached by other paths, and lowering it should take effect rather than just
+  // stopping growth.
+  const remaining = tracked.filter((tag) => !quiet.includes(tag.id));
+  const excess = selectExcessRetirements(remaining, { now, maxTracked: MAX_TRACKED_TAGS });
+
+  const retiring = [...quiet, ...excess];
   if (retiring.length > 0) {
     await retireTags(env.DB, retiring, now);
-    console.log(JSON.stringify({ event: 'retire', count: retiring.length }));
+    console.log(
+      JSON.stringify({ event: 'retire', quiet: quiet.length, overCeiling: excess.length }),
+    );
   }
 
-  const candidates = await loadCandidates(env.DB, now - 48 * 3600, DEFAULT_MIN_AUTHORS, 100);
-  const promoting = selectPromotions(candidates, {
+  // Tags people asked for but could not be tracked at the time jump the queue.
+  const [wanted, candidates] = await Promise.all([
+    queriedUntrackedTags(env.DB, now - 7 * 24 * 3600, 50),
+    loadCandidates(env.DB, now - 48 * 3600, DEFAULT_MIN_AUTHORS, 100),
+  ]);
+
+  const promoting = selectPromotionsWithQueried(wanted, candidates, {
     now,
-    trackedCount: tracked.length - retiring.length,
+    trackedCount: await countTrackedTags(env.DB),
     maxTracked: MAX_TRACKED_TAGS,
   });
 

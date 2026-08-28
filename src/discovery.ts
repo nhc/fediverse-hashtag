@@ -46,6 +46,25 @@ export interface PromotionLimits {
 export const DEFAULT_MIN_AUTHORS = 5;
 
 /**
+ * Ceiling on the tracked set.
+ *
+ * The request budget would allow around 150, but writes are the tighter
+ * constraint and the one that costs money, so this is set from the write budget
+ * instead. It lives here rather than in the Worker entry point because both the
+ * discovery pass and the search path have to respect it: a ceiling only the
+ * promoter honours is not a ceiling, since anybody can add a tag by searching
+ * for it, and a public URL gets crawled.
+ */
+export const MAX_TRACKED_TAGS = 50;
+
+/** A tag somebody asked for that the index is not tracking. */
+export interface QueriedTag {
+  name: string;
+  lastQueryAt: number;
+  queryCount: number;
+}
+
+/**
  * Choose candidates to start tracking.
  *
  * Strongest first, and only as many as there are free slots. A candidate that
@@ -159,4 +178,80 @@ export function rankTags<T extends RankableTag>(
 export function postsPerAuthor(postsObserved: number, authorsObserved: number): number | null {
   if (authorsObserved <= 0) return null;
   return Math.round((postsObserved / authorsObserved) * 10) / 10;
+}
+
+/**
+ * Fill the free slots, taking tags people asked for before tags found by
+ * co-occurrence.
+ *
+ * Human interest wins because it is the stronger signal and because somebody is
+ * actually waiting on the answer. A tag found in the pool has nobody looking at
+ * it yet, so it can wait for the next round.
+ */
+export function selectPromotionsWithQueried(
+  queried: readonly QueriedTag[],
+  candidates: readonly Candidate[],
+  limits: PromotionLimits,
+): string[] {
+  const slots = Math.max(0, limits.maxTracked - limits.trackedCount);
+  if (slots === 0) return [];
+
+  const blocked = limits.blocked;
+  const chosen: string[] = [];
+  const taken = new Set<string>();
+
+  const wanted = [...queried]
+    .filter((tag) => blocked?.has(tag.name) !== true)
+    .sort(
+      (a, b) => b.lastQueryAt - a.lastQueryAt || b.queryCount - a.queryCount || a.name.localeCompare(b.name),
+    );
+
+  for (const tag of wanted) {
+    if (chosen.length >= slots) break;
+    if (taken.has(tag.name)) continue;
+    chosen.push(tag.name);
+    taken.add(tag.name);
+  }
+
+  if (chosen.length < slots) {
+    const remaining = selectPromotions(candidates, {
+      ...limits,
+      trackedCount: limits.trackedCount + chosen.length,
+    });
+    for (const name of remaining) {
+      if (chosen.length >= slots) break;
+      if (taken.has(name)) continue;
+      chosen.push(name);
+      taken.add(name);
+    }
+  }
+
+  return chosen;
+}
+
+/**
+ * Bring an over-capacity tracked set back to the ceiling.
+ *
+ * Needed because the ceiling can be breached by things other than promotion, and
+ * because lowering the ceiling should take effect rather than merely stopping
+ * growth. The quietest tags go first, and a tag somebody has asked about
+ * recently is never dropped: they are the reason the ceiling exists to be spent
+ * on something.
+ */
+export function selectExcessRetirements(
+  tracked: readonly TrackedTag[],
+  limits: { now: number; maxTracked: number; protectQueriedWithinSeconds?: number },
+): number[] {
+  const excess = tracked.length - Math.max(0, limits.maxTracked);
+  if (excess <= 0) return [];
+
+  const protectWithin = limits.protectQueriedWithinSeconds ?? 24 * 3600;
+
+  return [...tracked]
+    .filter(
+      (tag) => tag.lastQueryAt === null || limits.now - tag.lastQueryAt >= protectWithin,
+    )
+    .sort((a, b) => a.postsLast24h - b.postsLast24h || a.name.localeCompare(b.name))
+    .slice(0, excess)
+    .map((tag) => tag.id);
 }
