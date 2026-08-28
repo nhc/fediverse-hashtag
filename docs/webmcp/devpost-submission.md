@@ -36,7 +36,7 @@ not covered by comparable slices of the network, it refuses to call a trend.
 Then agents started reading web pages. An agent that scrapes a number keeps
 the number and drops the caveats, and the caveats were the whole point. WebMCP
 was the chance to hand an agent the evidence directly, in a shape it cannot
-quietly discard.
+drop on the way to the person.
 
 ## Why this use case is a strong fit for WebMCP
 
@@ -52,8 +52,8 @@ The tools also refuse well. Asked about a tag the index is not collecting, the
 result says so, explains that the tracked set is at its ceiling, says the
 request has been queued, and offers the servers' own weekly counters labelled
 as a different kind of evidence. In testing, ChatGPT's browser turned that into
-"there's no reliable activity estimate yet ... but that's not evidence the tag
-is unused across the fediverse", which is exactly the sentence we wanted a
+"there's no reliable activity estimate yet" and, of the servers' own
+counters, "that's not evidence the tag is unused across the fediverse", which is exactly the sentence we wanted a
 person to hear.
 
 ## How it creates a better user experience
@@ -61,26 +61,26 @@ person to hear.
 Five tools, designed backwards from six things a person would actually say to
 an agent while on the site.
 
-- **"I'm writing this post, which hashtags fit it best?"** The agent reads the
+- "I'm writing this post, which hashtags fit it best?" The agent reads the
   draft and proposes candidates, because language is what it is good at. It
   then calls `evaluate_hashtags`, which reports how many distinct accounts used
   each tag, across how many servers, and whether that looks like a conversation
   or a few accounts posting a lot. For tags the index has never seen, it asks
-  two servers for their own counters, so a niche hobby tag gets a real answer
+  two servers for their own counters, so a niche hobby tag gets an answer
   rather than a shrug.
-- **"Compare #news and #photography."** `compare_hashtags` takes the person to
+- "Compare #news and #photography." `compare_hashtags` takes the person to
   `/compare?tags=news,photography`, a page anyone can open, share or reach from
   a form, with hourly sparklines and a warning when the tags' evidence is not
   like for like. The agent and the person are looking at the same URL.
-- **"What's trending?"** `trending_hashtags` ranks the tracked set by distinct
+- "What's trending?" `trending_hashtags` ranks the tracked set by distinct
   authors, not post volume, and attaches a direction that can be
   `not_comparable` when coverage shifted between hours. Two recent public posts
   per tag serve as receipts.
-- **"Tell me about #photography."** `lookup_hashtag` gives the full picture and
+- "Tell me about #photography." `lookup_hashtag` gives the full picture and
   moves the page to the tag. It is the one tool with a side effect, because a
   lookup is a search that can start collection, and both the description and
   the result say so.
-- **"How much of the fediverse can you actually see?"** `describe_coverage`
+- "How much of the fediverse can you actually see?" `describe_coverage`
   lists the monitored servers, their capabilities and the known limits, and
   tells the agent how to phrase any claim: "observed by this index across eight
   monitored servers", never "across the fediverse".
