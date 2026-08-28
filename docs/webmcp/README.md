@@ -130,6 +130,31 @@ Working backwards from use, in this order:
 Each step is a commit on the `webmcp` branch, worktree at
 `../fediverse-hashtag-webmcp`, off `build-mvp`.
 
+## Prior work and work during the Submission Period
+
+This project existed before the challenge opened on 25 August 2026. Under the
+rules it is judged only on WebMCP work added after that date, so the line is
+drawn here.
+
+**Prior work** (all commits before 25 August 2026, on `main`/`build-mvp`): the
+collector, scheduler, instance registry, D1 schema and migrations, the JSON API
+under `/api/v1/`, the server-rendered pages, the methodology and privacy
+documents, and the test suite. None of it involved WebMCP or any agent tooling.
+
+**Work during the Submission Period** (branch `webmcp`, from 28 August 2026):
+
+| Commit | Date | What |
+|---|---|---|
+| `73e4e96` | 28 Aug 2026 | Goals, process, five utterances, `lookup_hashtag` schema |
+| `d98670c` | 28 Aug 2026 | `evaluate_hashtags` tool, `/api/v1/evaluate` read-only endpoint, `src/suggest.ts` and tests, `src/webmcp.ts` registration served from the layout |
+| `8257a58` | 28 Aug 2026 | Entry plan against the official rules |
+
+Later commits on the branch continue the list. The full diff is the GitHub
+compare view `build-mvp...webmcp`. Every file under `docs/webmcp/`, plus
+`src/webmcp.ts` and `src/suggest.ts`, is new; the changes to `src/api.ts`,
+`src/db.ts`, `src/index.ts` and `src/ui.ts` are the endpoint, its query, its
+route and the script tag.
+
 ## Open questions
 
 - Should agent-originated lookups count as full query signals, or be

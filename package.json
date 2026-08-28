@@ -2,6 +2,7 @@
   "name": "fediverse-hashtag-index",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "Near-real-time index of public hashtag activity observed across monitored Fediverse servers",
   "scripts": {
