@@ -73,10 +73,9 @@ th { color: var(--muted); font-weight: 600; font-size: .78rem; text-transform: u
 td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .scroll { overflow-x: auto; }
 .note { font-size: .85rem; color: var(--muted); }
-.webmcp-compare { border: 1px solid var(--line); border-radius: 6px; padding: 1rem 1.25rem; margin: 0 0 2rem; }
-.webmcp-compare h2 { margin-top: 0; display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
-.webmcp-dismiss { font: inherit; font-size: .8rem; background: none; border: 1px solid var(--line); border-radius: 4px; padding: .15rem .5rem; color: var(--muted); cursor: pointer; }
-.spark { display: block; color: var(--accent, currentColor); }
+.compare-form { display: flex; gap: .5rem; margin: 1rem 0 .25rem; }
+.compare-form input { flex: 1; }
+.spark { display: block; color: var(--accent); }
 ul.limits { padding-left: 1.1rem; font-size: .9rem; color: var(--muted); }
 ul.limits li { margin: .35rem 0; }
 code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .85em; }
@@ -147,6 +146,7 @@ export function layout(title: string, body: string, statement: string): string {
 <nav><div>
   <a href="/">Search</a>
   <a href="/tags">All tags</a>
+  <a href="/compare">Compare</a>
   <a href="/explore">Explore</a>
   <a href="/coverage">Coverage and methodology</a>
   <a href="/status">Status</a>
@@ -974,8 +974,10 @@ The design, and why the tools look the way they do, is in the repository under
   <li><code>trending_hashtags</code>: the busiest tracked tags in the last hour,
   ranked by distinct authors, each with a trend that says when it cannot be
   compared. Read-only.</li>
-  <li><code>compare_hashtags</code>: two to four hashtags side by side, rendered
-  into the page you are looking at as well as returned to the agent. Read-only.</li>
+  <li><code>compare_hashtags</code>: two to four hashtags side by side. Takes you
+  to a <a href="/compare?tags=news,photography">comparison page</a> that anyone can
+  open, link to, or reach from a form, and returns the same figures to the agent.
+  Read-only.</li>
   <li><code>lookup_hashtag</code>: one hashtag in depth, with every figure's
   provenance and a plain refusal when there is not enough to answer. This one
   is a search: it registers the tag and may start collecting it, and says so.</li>
@@ -987,4 +989,82 @@ post, which hashtags fit it best?” followed by the draft.</p>
 <script>${WEBMCP_DIAGNOSTIC_SCRIPT}</script>`,
     statement,
   );
+}
+
+export interface CompareView {
+  statement: string;
+  data: import('./api').EvaluateData;
+  /** Posts per hour over the last 24 hours, oldest first, for tracked tags. */
+  hourly: Record<string, number[]>;
+  query: string;
+}
+
+function hourlySparkline(bars: readonly number[], label: string): string {
+  const max = Math.max(1, ...bars);
+  const width = 120;
+  const height = 28;
+  const barWidth = width / bars.length;
+  const rects = bars
+    .map((value, i) => {
+      const barHeight = Math.max(1, Math.round((value / max) * (height - 2)));
+      const opacity = i === bars.length - 1 ? 1 : 0.55;
+      return `<rect x="${(i * barWidth).toFixed(1)}" y="${height - barHeight}" width="${(barWidth - 1).toFixed(1)}" height="${barHeight}" fill="currentColor" opacity="${opacity}"/>`;
+    })
+    .join('');
+  return `<svg class="spark" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="${escapeHtml(label)}">${rects}</svg>`;
+}
+
+const dash = (value: number | null | undefined): string =>
+  value === null || value === undefined ? '—' : String(value);
+
+/**
+ * Two to four hashtags side by side. A URL, not a state: anyone can open,
+ * share, or reach it from the form, and an agent can send a person here.
+ */
+export function comparePage(view: CompareView): string {
+  const form = `<form action="/compare" method="get" class="compare-form">
+  <input type="text" name="tags" value="${escapeHtml(view.query)}" placeholder="news, photography, art" aria-label="Hashtags to compare, separated by commas" required>
+  <button type="submit">Compare</button>
+</form>
+<p class="note">Two to four hashtags, separated by commas. Comparing registers nothing and changes nothing about what the index watches.</p>`;
+
+  if (view.data.candidates.length === 0) {
+    return layout('Compare hashtags', `<h1>Compare hashtags</h1>
+${form}`, view.statement);
+  }
+
+  const standings = new Set(view.data.candidates.map((c) => c.standing));
+  const mixed = standings.size > 1;
+  const rows = view.data.candidates
+    .map((c) => {
+      const bars = view.hourly[c.tag];
+      const reported = c.server_reported;
+      return `<tr>
+  <td><a href="/tag/${encodeURIComponent(c.tag)}">#${escapeHtml(c.display)}</a></td>
+  <td>${escapeHtml(c.standing)}</td>
+  <td>${dash(c.authors_24h)}${reported ? `<br><span class="note">${reported.accounts_7d} server-reported, 7 days</span>` : ''}</td>
+  <td>${dash(c.posts_24h)}</td>
+  <td>${dash(c.origin_servers_24h)}</td>
+  <td>${dash(c.posts_per_author)}</td>
+  <td>${dash(c.authors_1h)}</td>
+  <td>${bars ? hourlySparkline(bars, `posts per hour for #${c.display}, last 24 hours`) : '<span class="note">not polled</span>'}</td>
+</tr>`;
+    })
+    .join('\n');
+
+  const body = `<h1>Compare hashtags</h1>
+${form}
+${
+  mixed
+    ? `<p class="callout warn"><strong>Not directly comparable.</strong> These tags have different standings with this index, so their figures come from different kinds of evidence: observed posts for tracked tags, sightings for discovered ones, and the servers' own weekly counters for unseen ones.</p>`
+    : ''
+}
+<p class="note">${escapeHtml(view.statement)} As of ${escapeHtml(view.data.as_of)}. ${view.data.provenance.instances_monitored} servers monitored, ${view.data.provenance.instances_healthy} healthy.</p>
+<div class="scroll"><table>
+<thead><tr><th>Tag</th><th>Standing</th><th>Accounts, 24h</th><th>Posts, 24h</th><th>Servers</th><th>Posts / author</th><th>Accounts, last hour</th><th>Posts per hour, 24h</th></tr></thead>
+<tbody>${rows}</tbody>
+</table></div>
+<p class="note">${escapeHtml(view.data.note)}</p>
+<p class="note">The same figures as JSON: <a href="/api/v1/evaluate?tags=${encodeURIComponent(view.query)}">/api/v1/evaluate?tags=${escapeHtml(view.query)}</a>.</p>`;
+  return layout('Compare hashtags', body, view.statement);
 }

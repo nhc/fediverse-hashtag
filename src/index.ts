@@ -22,6 +22,7 @@ import {
   timeseriesResponse,
   evaluateResponse,
   trendingResponse,
+  buildEvaluateData,
 } from './api';
 import { collectTick, configFromEnv } from './collect';
 import {
@@ -42,6 +43,7 @@ import {
   trackedForRetirement,
   hourlyPostsByTag,
   tagOverview,
+  findTag,
 } from './db';
 import {
   DEFAULT_MIN_AUTHORS,
@@ -63,6 +65,7 @@ import {
   tagPage,
   tagsPage,
   webmcpPage,
+  comparePage,
   type ExploreView,
   type TagView,
   type TagsView,
@@ -165,6 +168,7 @@ export default {
       // --- Web pages ---
       if (path === '/') return html(searchPage(STATEMENT));
       if (path === '/tags') return await renderTagsPage(env, now, url);
+      if (path === '/compare') return await renderComparePage(env, now, url);
       if (path === '/explore') return await renderExplorePage(env, now);
 
       if (path === '/tag') {
@@ -525,4 +529,68 @@ async function renderTagsPage(env: Env, now: number, url: URL): Promise<Response
   };
 
   return html(tagsPage(view), 200, 30);
+}
+
+/** Posts per hour over the last 24 hours, oldest first, from the minute rollups. */
+function hourlyBuckets(points: readonly { minute: number; posts: number }[], now: number): number[] {
+  const bars = new Array<number>(24).fill(0);
+  const nowMinute = minuteBucket(now);
+  for (const point of points) {
+    const ageHours = Math.floor((nowMinute - point.minute) / 60);
+    if (ageHours >= 0 && ageHours < 24) bars[23 - ageHours] = (bars[23 - ageHours] ?? 0) + point.posts;
+  }
+  return bars;
+}
+
+async function renderComparePage(env: Env, now: number, url: URL): Promise<Response> {
+  const query = (url.searchParams.get('tags') ?? '').trim();
+  if (query.length === 0) {
+    return html(
+      comparePage({
+        statement: STATEMENT,
+        query: '',
+        hourly: {},
+        data: {
+          as_of: new Date(now * 1000).toISOString(),
+          completeness: 'partial',
+          statement: STATEMENT,
+          note: '',
+          side_effects: { queries_registered: 0 },
+          candidates: [],
+          provenance: {
+            instances_monitored: 0,
+            instances_healthy: 0,
+            last_successful_update: null,
+            tracked_tags: 0,
+            discovery_window_hours: 48,
+          },
+        },
+      }),
+    );
+  }
+
+  // Four is the ceiling for a side-by-side that still reads as one.
+  const data = await buildEvaluateData(env, query.split(',').slice(0, 4).join(','), now);
+  if (isDataError(data)) return html(notFoundPage(STATEMENT), data.status);
+
+  const hourly: Record<string, number[]> = {};
+  await Promise.all(
+    data.candidates
+      .filter((c) => c.standing === 'tracked')
+      .map(async (c) => {
+        const tag = await findTag(env.DB, c.tag);
+        if (tag === null) return;
+        const points = await timeseries(env.DB, tag.id, minuteBucket(now - 86_400), minuteBucket(now) + 1);
+        hourly[c.tag] = hourlyBuckets(points, now);
+      }),
+  );
+
+  return html(
+    comparePage({
+      statement: STATEMENT,
+      query: data.candidates.map((c) => c.display).join(','),
+      hourly,
+      data,
+    }),
+  );
 }

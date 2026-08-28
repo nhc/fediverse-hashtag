@@ -261,10 +261,11 @@ export async function buildTagData(
   };
 }
 
-export function isDataError(
-  value: { error: string; status: number } | Record<string, unknown>,
+export function isDataError<T extends object>(
+  value: { error: string; status: number } | T,
 ): value is { error: string; status: number } {
-  return typeof value.error === 'string' && typeof value.status === 'number';
+  const candidate = value as { error?: unknown; status?: unknown };
+  return typeof candidate.error === 'string' && typeof candidate.status === 'number';
 }
 
 export async function tagResponse(env: Env, rawTag: string, now: number): Promise<Response> {
@@ -591,9 +592,23 @@ async function lastSuccessfulUpdate(
  * GET /api/v1/evaluate?tags=cats,dogs,caturday
  */
 export async function evaluateResponse(env: Env, rawTags: string | null, now: number): Promise<Response> {
+  const data = await buildEvaluateData(env, rawTags, now);
+  if (isDataError(data)) return json({ error: data.error }, data.status);
+  return json(data);
+}
+
+/**
+ * Build the evaluation once, so the JSON API and the /compare page cannot drift
+ * apart. Anything the page shows is something the API already publishes.
+ */
+export async function buildEvaluateData(
+  env: Env,
+  rawTags: string | null,
+  now: number,
+): Promise<{ error: string; status: number } | EvaluateData> {
   const candidates = normaliseCandidates((rawTags ?? '').split(','), casefoldTag);
   if (candidates.length === 0) {
-    return json({ error: `give up to ${MAX_CANDIDATES} hashtags as ?tags=a,b,c` }, 400);
+    return { error: `give up to ${MAX_CANDIDATES} hashtags as ?tags=a,b,c`, status: 400 };
   }
 
   const [overview, instances] = await Promise.all([tagOverview(env.DB, now), loadInstances(env.DB)]);
@@ -635,7 +650,7 @@ export async function evaluateResponse(env: Env, rawTags: string | null, now: nu
     }),
   );
 
-  return json({
+  return {
     as_of: new Date(now * 1000).toISOString(),
     completeness: 'partial',
     statement: STATEMENT,
@@ -653,7 +668,27 @@ export async function evaluateResponse(env: Env, rawTags: string | null, now: nu
       tracked_tags: overview.length,
       discovery_window_hours: 48,
     },
-  });
+  };
+}
+
+export interface EvaluateData {
+  as_of: string;
+  completeness: 'partial';
+  statement: string;
+  note: string;
+  side_effects: { queries_registered: 0 };
+  candidates: Array<
+    ReturnType<typeof evaluateCandidates>[number] & {
+      server_reported?: ReturnType<typeof summariseServerReports> extends infer T ? Exclude<T, null> : never;
+    }
+  >;
+  provenance: {
+    instances_monitored: number;
+    instances_healthy: number;
+    last_successful_update: string | null;
+    tracked_tags: number;
+    discovery_window_hours: number;
+  };
 }
 
 /**
