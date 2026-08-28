@@ -10,7 +10,7 @@ Six utterances, five tools:
 | Tool | Registers a query? | Renders in page? |
 |---|---|---|
 | `lookup_hashtag` | yes, like a search does; the result says so | navigates to `/tag/:name` after returning |
-| `compare_hashtags` | yes, for each tag | yes, a comparison view |
+| `compare_hashtags` | no | navigates to `/compare?tags=…`, a page anyone can open |
 | `trending_hashtags` | no | no |
 | `describe_coverage` | no | no |
 | `evaluate_hashtags` | no | no |
@@ -58,14 +58,19 @@ answered, correctly, that it had.
 **What it took.** The first attempt failed silently: the agent picked
 `evaluate_hashtags` for "compare", so nothing rendered. Each description now
 names the other tool for the other job, and `compare_hashtags` leads with the
-verbs a person uses (compare, versus, side by side). The rendered table is also
-kept in `sessionStorage` for ten minutes and redrawn on the next page in the
-tab, with a Remove control, because this agent navigates after it calls. The
+verbs a person uses (compare, versus, side by side). **Then a redesign** (15:00 UK). The first version drew the table into whatever
+page was open and kept it in `sessionStorage`. Seen on top of an unrelated tag
+page it read as a hack: wrong context underneath, state nobody could see or
+share, a view no person could reach without an agent. Replaced with
+`/compare?tags=a,b,c`, a server-rendered page with the same sparklines, a
+form, and a nav link, so the URL is the shared state, as everywhere else on the
+site. The tool sends the person there and returns the same figures. The
+`evaluate` payload is built once for both the API and the page. The
 lesson for anyone building WebMCP tools: the description is the routing layer,
 and a tool that overlaps another needs to say so in both places.
 
-**What this adds:** the tool must render the comparison into the current tab,
-not only return numbers. The reply also leans on `posts_per_author`, which the
+**What this adds:** the tool must put the comparison in front of the person,
+not only return numbers, and do it as a page they could have reached themselves. The reply also leans on `posts_per_author`, which the
 site already publishes so readers can tell a conversation from one person
 shouting.
 
