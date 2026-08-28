@@ -27,6 +27,39 @@ the rules disagree, the rules win.
 a full day for a Devpost form problem, a YouTube processing delay, or a
 deployment that falls over. Do not plan to use the final day.
 
+## Outstanding, kept current
+
+The live to-do list. Update this section rather than the chat. Last updated
+Friday 28 August 2026, 15:20 UK.
+
+**Built and verified:** five tools, live from `build-mvp`, all verified in
+ChatGPT's in-app browser and Chrome 151; `/webmcp` diagnostics; `/compare`
+page; licence; prior/new-work record; repo pushed (private).
+
+**Browser checks still open**
+- [ ] ChatGPT browser: after the `document.modelContext` change, "what webmcp
+      tools can I access here" still lists five.
+- [ ] Safari or Firefox: home page console empty; `/webmcp` says no model
+      context; `/compare?tags=news,art` renders.
+
+**Entry logistics still open (Neil)**
+- [ ] Register on Devpost and save a draft submission. Note any form fields
+      not covered by this document.
+- [ ] Decide when to flip `nhc/fediverse-hashtag` to public. Required before
+      submission; earlier makes the README compare link work for anyone.
+- [ ] Video: 2:30 script from the captured exchanges, record, upload to
+      YouTube as Public, no music, no logos in the thumbnail.
+- [ ] Text description under the rules' four headings.
+- [ ] Screenshots for the form: pottery evaluation, trending, compare page,
+      lookup refusal, coverage answer. Most already captured today.
+- [ ] Submit by Wednesday 2 September, 9 pm UK. Confirm status is "submitted".
+
+**Nice to have, not gating**
+- [ ] Tag page Coverage panel grades zero observations as "thin" in red;
+      should say nothing observed instead.
+- [ ] `/webmcp` reads `navigator.modelContext` for diagnostics and so logs one
+      deprecation warning on that page only.
+
 ## Eligibility, checked once
 
 - [ ] I am an individual, of majority age, resident in the UK (on OpenAI's
