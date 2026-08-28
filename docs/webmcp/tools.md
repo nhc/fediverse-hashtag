@@ -5,7 +5,7 @@ agent while on this site. The reply is what we would want the agent to say
 back, given only what the tool returned. If a reply needed information the tool
 did not give, the tool changed. Read [README.md](README.md) for why.
 
-Five utterances, four tools:
+Six utterances, five tools:
 
 | Tool | Registers a query? | Renders in page? |
 |---|---|---|
@@ -13,8 +13,9 @@ Five utterances, four tools:
 | `compare_hashtags` | yes, for each tag | yes, a comparison view |
 | `trending_hashtags` | no | no |
 | `describe_coverage` | no | no |
+| `evaluate_hashtags` | no | no |
 
-## The five utterances
+## The utterances
 
 ### 1. "Is #eurovision busy right now?"
 
@@ -112,6 +113,49 @@ Or, when the tracked set is full:
 **What this adds:** the refusal branch. `status` is not `ok`, there is a
 `reason`, a `what_would_change_it`, and the side effect (registered, tracked or
 not) is stated. The separately-sourced daily history is labelled as such.
+
+### 6. "I'm writing a post, which hashtags fit it best? [text]"
+
+**Tool:** `evaluate_hashtags({ candidates: [...] })`
+
+The index stores no post content, so it cannot read the draft. The split is:
+the agent reads the text and proposes candidates, because language is what it
+is good at; the index says what it has seen of each, because evidence is what
+it has. The tool description says this outright so the agent does not send the
+post text and expect matching.
+
+**Reply we want:**
+
+> From the draft I'd consider #caturday, #cats, #catsofmastodon, #tabby and
+> #adoptdontshop. Checking those against what the index can see:
+>
+> - #cats: 1,102 different accounts in 24 hours across 9 servers, about 1.7
+>   posts each, so a broad conversation. 40 accounts in the last hour.
+> - #catsofmastodon: not polled, but seen from 61 accounts across 7 servers
+>   alongside tracked tags in the last two days. Sightings are a lower bound.
+> - #caturday: 44 accounts in the last hour, so it's live right now.
+> - #tabby: 3 accounts, 90 posts, one server. That's a few accounts posting a
+>   lot, not a conversation; it may not get you seen.
+> - #adoptdontshop: the index hasn't seen it at all. That doesn't mean nobody
+>   uses it, only that none of the 9 monitored servers showed it on the tags
+>   being watched.
+>
+> I'd go with #cats and #caturday for reach and #catsofmastodon for the
+> community. None of these lookups registered a search or changed what the
+> index watches.
+
+**What this adds:** a read that must not be a signal. Evaluating ten
+candidates through `lookup_hashtag` would register ten queries and could start
+tracking ten tags. So this is a separate endpoint, `/api/v1/evaluate`, that
+reads tracked observations and the discovery pool and writes nothing, and the
+result says `side_effects.queries_registered: 0`. Each candidate carries a
+`standing` (`tracked`, `discovered`, `unseen`) with a note on what the figures
+beside it mean, because sightings from the discovery pool and observations from
+polling are different evidence and must not be read as the same number.
+
+Status: built. `src/suggest.ts` (pure, tested), `candidateStats` in
+`src/db.ts`, `evaluateResponse` in `src/api.ts`, registered in
+`src/webmcp.ts` and served from the shared layout.
 
 ## `lookup_hashtag`
 

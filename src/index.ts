@@ -20,6 +20,7 @@ import {
   tagResponse,
   tagsResponse,
   timeseriesResponse,
+  evaluateResponse,
 } from './api';
 import { collectTick, configFromEnv } from './collect';
 import {
@@ -140,6 +141,9 @@ export default {
       if (path === '/api/v1/meta') return await metaResponse(env, now);
       if (path === '/api/v1/tags') {
         return await tagsResponse(env, now, parseOrder(url.searchParams.get('order')));
+      }
+      if (path === '/api/v1/evaluate') {
+        return await evaluateResponse(env, url.searchParams.get('tags'), now);
       }
       if (path === '/api/v1/instances') return await instancesResponse(env, now);
       if (path === '/api/v1/coverage') return await coverageResponse(env, now);

@@ -18,6 +18,7 @@ import {
   thresholdY,
   type ExploreTag,
 } from './explore';
+import { WEBMCP_SCRIPT } from './webmcp';
 
 const STYLE = `
 :root {
@@ -136,6 +137,7 @@ export function layout(title: string, body: string, statement: string): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escapeHtml(title)}</title>
 <style>${STYLE}</style>
+<script>${WEBMCP_SCRIPT}</script>
 </head>
 <body>
 <nav><div>
