@@ -111,6 +111,87 @@ not due. Each tag page states its own polling interval, and that figure accounts
 for how often the collector actually runs rather than only what the tag's tier
 asks for.
 
+## How tags are chosen
+
+The index polls a limited number of hashtags, because every tracked tag costs
+requests and database writes and the budget is fixed. Tags have to earn a slot,
+and some have to lose one.
+
+Most arrive by being noticed rather than asked for. A post collected for one
+hashtag usually carries others, and those become candidates at no extra cost,
+because the request has already been made.
+
+### Three tests, and why it took three tries
+
+A candidate needs at least **5 distinct authors**, at least **3 distinct origin
+servers**, and no more than **5 authors per server** before it is polled.
+
+The author count stops a single enthusiastic account earning a slot by posting the
+same tag two hundred times. Counting distinct people rather than uses is what makes
+that impossible rather than merely unlikely.
+
+It is not enough alone. An automated news feed running fifteen accounts on two
+servers has fifteen genuinely distinct authors, so by author count it is
+indistinguishable from a conversation. Getting the second test right took two
+failed attempts, and both failed the same way: the signal moved as the sample
+deepened.
+
+The first attempt required a minimum number of origin servers. On the sample it was
+built from, the feeds sat at 2 to 3 servers and genuine tags at 31 to 69. Twelve
+hours later the feeds had reached 4 to 7 and were passing. Breadth grows the longer
+you watch.
+
+The second attempt was posts per author, which looked scale-free and was not. It
+would have retired `#news`, one of the most active genuine tags in the index,
+because a busy tag accumulates posts against a stable author pool and its ratio
+climbs just as a feed's does.
+
+What holds still is authors per server.
+
+| Tag | Authors | Servers | Authors per server |
+|---|---|---|---|
+| an automated feed | 67 | 4 | 16.8 |
+| another | 33 | 4 | 8.3 |
+| `#news` | 384 | 99 | 3.9 |
+| `#photography` | 161 | 65 | 2.5 |
+| `#buddhism` | 7 | 3 | 2.3 |
+
+A publisher adds accounts without adding servers. A conversation spreads across
+servers as it gains people, so both terms grow together and the ratio stays flat
+however large the tag gets. Measured twelve hours apart, the feeds sat at 7 to 30
+and the genuine tags at 2.3 to 3.9, and neither cluster moved.
+
+### What these tests cost
+
+The server floor is deliberately low, at three, because it no longer has to spot
+publishers. It only excludes hashtags confined to one or two servers, which are a
+local timeline rather than activity across the network and which this index would
+see only if it happened to monitor that server.
+
+Keeping it low matters. An earlier, higher floor would have excluded `#buddhism`, a
+real community of seven people across three servers. Small communities are what an
+index like this should surface, so a test that mistakes small for fake is a bad
+test.
+
+### Losing a slot
+
+A tag stops being polled when it has produced nothing for a day and nobody has
+asked about it for a week, or when it turns out to be a publisher rather than a
+community on the figures above. Both thresholds apply to tags already being polled
+and not only to new ones, so a tag admitted before a rule existed is judged by it
+too.
+
+A hashtag somebody asked about recently is never dropped. Someone watching a quiet
+tag is a good enough reason to keep watching it.
+
+### One signal recorded but not enforced
+
+The mean number of hashtags on the posts carrying a tag is measured and published.
+A post with fifteen hashtags is a broadcast; a person tagging usually manages three.
+It is published rather than enforced, because nothing has yet slipped through that
+it would have caught, and guessing at thresholds without evidence is exactly what
+the two failed attempts above did.
+
 ## Hashtags not yet tracked
 
 The index tracks a limited set of hashtags, because request budget is finite.

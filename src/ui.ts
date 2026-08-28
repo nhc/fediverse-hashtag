@@ -450,6 +450,85 @@ only holds if the index saw about as much in both periods, so when servers were
 unreachable during either window no trend is shown at all. An absent trend means the
 comparison could not be made honestly, not that activity was flat.</p>
 
+<h2 id="how-tags-are-chosen">How tags are chosen</h2>
+<p>This index polls a limited number of hashtags, because every tracked tag costs
+requests and database writes and the budget is fixed. So tags have to earn a slot,
+and some have to lose one.</p>
+<p>Most tags arrive by being noticed rather than by being asked for. A post
+collected for one hashtag usually carries others, and those become candidates. It
+costs nothing to see them, because the request has already been made.</p>
+
+<h3>Three tests, and why it took three tries</h3>
+<p>A candidate needs <strong>at least 5 distinct authors</strong>, <strong>at least
+3 distinct origin servers</strong>, and <strong>no more than 5 authors per
+server</strong> before it is polled.</p>
+<p>The author count is the obvious test. It stops a single enthusiastic account
+earning a slot by posting the same tag two hundred times, and counting distinct
+people rather than uses is what makes that impossible rather than merely
+unlikely.</p>
+<p>It is not enough on its own, and the reason is worth explaining because it took
+two failed attempts to get right. An automated news feed running fifteen accounts
+on two servers has fifteen genuinely distinct authors. By author count it is
+indistinguishable from a conversation.</p>
+<p>The first attempt required a minimum number of origin servers. That worked on
+the sample it was built from, where the feeds sat at 2 to 3 servers and genuine tags
+at 31 to 69. Twelve hours later the feeds had reached 4 to 7 servers and were
+passing the test. Breadth grows the longer you watch, so a threshold set from a
+snapshot ends up in the wrong place.</p>
+<p>The second attempt was posts per author, which looked independent of scale and
+was not. It would have retired <code>#news</code>, one of the most active genuine
+tags in the index, because a busy tag accumulates posts against a stable pool of
+authors and its ratio climbs just as a feed's does.</p>
+<p>What holds still is <strong>authors per server</strong>:</p>
+<div class="scroll"><table>
+<thead><tr><th>Tag</th><th class="num">Authors</th><th class="num">Servers</th><th class="num">Authors per server</th></tr></thead>
+<tbody>
+<tr><td>an automated feed</td><td class="num">67</td><td class="num">4</td><td class="num">16.8</td></tr>
+<tr><td>another</td><td class="num">33</td><td class="num">4</td><td class="num">8.3</td></tr>
+<tr><td>#news</td><td class="num">384</td><td class="num">99</td><td class="num">3.9</td></tr>
+<tr><td>#photography</td><td class="num">161</td><td class="num">65</td><td class="num">2.5</td></tr>
+<tr><td>#buddhism</td><td class="num">7</td><td class="num">3</td><td class="num">2.3</td></tr>
+</tbody></table></div>
+<p>A publisher adds accounts without adding servers. A conversation spreads across
+servers as it gains people, so both numbers grow together and the ratio stays flat
+however large the tag gets. Measured at two points twelve hours apart, the feeds sat
+at 7 to 30 and the genuine tags at 2.3 to 3.9, and neither cluster moved.</p>
+
+<h3>What these tests cost</h3>
+<p>The server floor is deliberately low, at three, because it is no longer doing the
+work of spotting publishers. It only excludes hashtags confined to one or two
+servers. Those are a single server's local timeline rather than activity across the
+network, and this index would see them at all only if it happened to monitor that
+server.</p>
+<p>Keeping it low matters. An earlier, higher floor would have excluded
+<code>#buddhism</code>, a real community of seven people across three servers. Small
+communities are exactly what an index like this should surface, so a test that
+mistakes small for fake is a bad test.</p>
+
+<h3>Losing a slot</h3>
+<p>A tag stops being polled when it has produced nothing for a day and nobody has
+asked about it for a week, or when it turns out to be a publisher rather than a
+community on the figures above. Both thresholds are applied to tags already being
+polled, not only to new ones, so a tag admitted before a rule existed is judged by
+it too.</p>
+<p>A hashtag somebody has asked about recently is never dropped. Someone watching a
+quiet tag is a perfectly good reason to keep watching it.</p>
+
+<h3>Asking for a tag</h3>
+<p>Searching for a hashtag counts as asking for it, and a request goes ahead of
+anything found automatically, because you are waiting on the answer and a noticed
+tag is not. If the index is at capacity your request is recorded and takes the next
+free slot. The page will say plainly that the tag is not being collected yet rather
+than showing you windows and letting you assume it is.</p>
+
+<h3>One signal recorded but not acted on</h3>
+<p>The average number of hashtags on the posts carrying a tag is measured and shown
+on the <a href="/tags">all tags</a> page. A post with fifteen hashtags is a
+broadcast and a person tagging usually manages three. It is published rather than
+enforced, because nothing has yet slipped through that it would have caught, and
+guessing at thresholds without evidence is precisely what the two failed attempts
+above did wrong.</p>
+
 <h2>Monitored servers</h2>
 <p class="note">Capability is probed per server and re-probed weekly. It is never
 inferred from software version, because version does not predict it: a server running a
@@ -568,7 +647,15 @@ export interface TagsView {
     authors1h: number;
     originServers: number;
   }[];
-  discovered: { tag: string; authorsObserved: number }[];
+  discovered: {
+    tag: string;
+    authorsObserved: number;
+    originServers: number;
+    meanTagsPerPost: number | null;
+    wouldPromote: boolean;
+    looksLikeTagSpam: boolean;
+  }[];
+  promotionRule: { minAuthors: number; minOriginServers: number; why: string };
 }
 
 /**
@@ -617,6 +704,19 @@ export function tagsPage(view: TagsView): string {
       (tag) => `<tr>
   <td><a href="/tag/${encodeURIComponent(tag.tag)}">#${escapeHtml(tag.tag)}</a></td>
   <td class="num">${formatCount(tag.authorsObserved)} ${bar(tag.authorsObserved, peakDiscovered)}</td>
+  <td class="num ${tag.originServers < view.promotionRule.minOriginServers ? 'q-thin' : ''}">${formatCount(tag.originServers)}</td>
+  <td class="num">${
+    tag.meanTagsPerPost === null
+      ? '<span class="unavailable">&mdash;</span>'
+      : `<span class="${tag.looksLikeTagSpam ? 'q-partial' : ''}">${tag.meanTagsPerPost}</span>`
+  }</td>
+  <td>${
+    tag.wouldPromote
+      ? '<span class="q-good">queued</span>'
+      : tag.originServers < view.promotionRule.minOriginServers
+        ? '<span class="q-thin">too few servers</span>'
+        : '<span class="unavailable">too few authors</span>'
+  }</td>
 </tr>`,
     )
     .join('\n');
@@ -656,8 +756,15 @@ ${
     ? `<p class="note">Nothing discovered yet. Candidates appear once the collector
        has seen a tag used by several different people on posts it collected.</p>`
     : `<div class="scroll"><table>
-<thead><tr><th>Tag</th><th class="num">Distinct authors, 48h</th></tr></thead>
-<tbody>${discoveredRows}</tbody></table></div>`
+<thead><tr>
+  <th>Tag</th><th class="num">Authors 48h</th><th class="num">Servers</th>
+  <th class="num">Tags per post</th><th>Status</th>
+</tr></thead>
+<tbody>${discoveredRows}</tbody></table></div>
+<p class="note">A tag needs ${view.promotionRule.minAuthors} distinct authors
+<em>and</em> ${view.promotionRule.minOriginServers} distinct origin servers before it
+is polled. ${escapeHtml(view.promotionRule.why)}
+<a href="/coverage#how-tags-are-chosen">More on how tags are chosen</a>.</p>`
 }
 <p class="note">As of ${escapeHtml(view.asOf.slice(0, 19).replace('T', ' '))} UTC.
 Same data as <code>/api/v1/tags</code>.</p>`,

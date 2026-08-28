@@ -312,3 +312,110 @@ better candidates are queued behind the ceiling and will still be there.
 **Also worth noting.** The queue is evidence the pool works. `strongest_candidate`
 reached 52 distinct authors, well above the threshold, so the raw discovery
 mechanism is finding plenty. The problem is purely which candidates get in.
+
+## 16. Promotion gates on origin-server breadth, not author count alone
+*28 August 2026, closing the problem opened in decision 15*
+
+**Decision.** A candidate needs at least 5 distinct authors *and* at least 4
+distinct origin servers to be promoted. Rank survivors by server breadth rather
+than author count. Apply the same threshold retroactively, so tags admitted before
+it existed are re-judged. Record mean hashtags per post but do not enforce it.
+
+**Why breadth and not something else.** Three candidate signals were checked
+against the live figures before choosing:
+
+| Tag | Authors | Posts/author | Origin servers |
+|---|---|---|---|
+| `#headlines` | 60 | 6.3 | 2 |
+| `#topstories` | 23 | 9.5 | 3 |
+| `#featurednews` | 14 | 14.1 | 2 |
+| `#news` (genuine) | 249 | 6.5 | 69 |
+| `#photography` | 161 | 1.5 | 65 |
+
+Author count fails: `#headlines` has sixty. Posts per author fails too, and this is
+the interesting one, because it is the signal that sounds most obviously right:
+`#news` at 6.5 is legitimate and `#headlines` at 6.3 is a farm, so the metric
+cannot separate them at all. Origin-server count separates them with no overlap
+whatsoever, 1 to 3 against 31 to 69.
+
+A floor of 4 excludes every problem tag found and no genuine one. That absence of
+overlap is why it is a hard floor: nothing legitimate was near it, so there is no
+judgement call to soften.
+
+**Why ranking changed too.** Among candidates that clear both floors, breadth
+decides. A tag alive on forty servers is a topic moving across the network, which
+is what this index exists to measure; a tag with more authors on five servers is a
+smaller thing. With slots scarce the broader one should win.
+
+**Cost.** A hashtag used entirely within one instance's community is excluded,
+however healthy. Defensible for an index of activity *across* the network, since
+such a tag is a local timeline rather than federated activity and would be visible
+only if that server happened to be monitored. Still a real trade-off, and it is
+stated on the public coverage page rather than buried here.
+
+**Retroactive by necessity, not neatness.** The farms already admitted are busy, so
+the quiet-tag rule would never have reached them and they would have held scarce
+slots indefinitely while ninety-odd candidates queued. Retirement therefore judges
+tracked tags on the same threshold, guarded by a minimum post count so a new tag is
+not retired for having narrow breadth when it simply has few posts.
+
+**Instrumented, not enforced.** Mean hashtags per post is recorded and published on
+the tags page and the API. It is the obvious second signal, and would catch a farm
+spread across enough servers to pass the floor. That has not been observed, so it
+is measured rather than acted on. Guessing a threshold without data is how the
+first version of this rule let the news feeds through.
+
+**Documented publicly.** The reasoning, the figures and the trade-off are on the
+coverage page under "How tags are chosen", because an index that asks to be trusted
+about what it counts should also explain what it chooses to watch.
+
+## 17. Authors per server, after two signals that drifted
+*28 August 2026, superseding the threshold in decision 16 the same day*
+
+**Decision.** Promotion and retirement gate on **authors per server**, capped at 5,
+with the origin-server floor lowered from 4 to 3 and the posts-per-author gate from
+decision 16 removed entirely.
+
+**Why the previous two failed.** Both failed the same way, and it is the lesson
+worth keeping: the signal moved as the sample deepened.
+
+Raw origin-server count, from decision 16, was calibrated on two and a half hours
+of data where the news farms sat at 2 to 3 servers and genuine tags at 31 to 69. A
+floor of 4 looked like it sat in an enormous gap. Twelve hours later the farms had
+crept to 4 to 7 servers and were clearing it. Breadth accumulates with observation
+time, so any absolute threshold on it drifts.
+
+Posts per author replaced it and was worse, because it was wrong in the dangerous
+direction. On the first sample it separated nothing at all: a genuine tag at 6.5 and
+a farm at 6.3. On the second it looked excellent, farms at 12 to 25 against genuine
+tags at 1.5 to 6.5. It was deployed on that basis and would have retired `#news` at
+13.9 posts per author on 99 servers, the single most active genuine tag in the
+index. Caught by inspecting the live figures before the next discovery pass ran.
+
+**Why this one holds.** Authors per server is a ratio of two quantities that grow
+together for a community and separately for a publisher. A feed adds accounts on the
+servers it already controls, so its numerator climbs and its denominator does not. A
+conversation reaches new people on new servers, so both climb and the ratio is
+flat. Measured at both sampling points twelve hours apart:
+
+| | 2.5 hours | 12 hours |
+|---|---|---|
+| `#headlines` | 30.0 | 16.8 |
+| `#topstories` | 7.7 | 8.3 |
+| `#news` | 3.6 | 3.9 |
+| `#photography` | 2.5 | 2.5 |
+| `#buddhism` | 2.3 | 2.3 |
+
+Farms 7 to 30, genuine 2.3 to 3.9, at both points. The clusters did not move, which
+is the property the other two signals lacked.
+
+**Consequence for the breadth floor.** Lowered to 3, because it no longer has to
+identify publishers and a higher floor does real harm: it would have excluded
+`#buddhism`, seven people across three servers and entirely genuine. Small
+communities are what this index should surface, so a test that mistakes small for
+fake is a bad test. The floor now only excludes one and two-server tags, which are
+local timelines rather than federated activity.
+
+**Lesson.** Before trusting a threshold, check whether the metric is stable under a
+longer sample. Two of the three signals tried here looked decisive on one snapshot
+and were not, and the second was deployed before that check was made.

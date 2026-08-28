@@ -17,6 +17,19 @@ export interface Candidate {
   name: string;
   /** Exact count of distinct authors observed using it. */
   distinctAuthors: number;
+  /**
+   * Distinct servers those authors posted from. The signal that separates a
+   * conversation from a publisher, measured across the whole network rather than
+   * the monitored set.
+   */
+  distinctOriginServers: number;
+  /**
+   * Sightings divided by distinct authors. Scale-free, unlike breadth, so it
+   * judges a small community and a large one on the same terms.
+   */
+  postsPerAuthor: number | null;
+  /** Mean hashtags on the posts carrying it. Recorded, not yet gated on. */
+  meanTagsPerPost: number | null;
   firstSeen: number;
 }
 
@@ -33,17 +46,73 @@ export interface PromotionLimits {
   /** How many tags are tracked right now. */
   trackedCount: number;
   /**
-   * Ceiling on the tracked set, set by the request budget rather than by taste.
-   * See the tier arithmetic in docs/design.md.
+   * Ceiling on the tracked set, set by the write budget rather than by taste.
+   * See the arithmetic in docs/design.md.
    */
   maxTracked: number;
   /** Distinct authors a candidate needs before it is worth a slot. */
   minAuthors?: number;
+  /** Distinct origin servers a candidate needs to count as a community. */
+  minOriginServers?: number;
+  /** Authors per server above which a candidate is treated as a publisher. */
+  maxAuthorsPerServer?: number;
   /** Names never to promote, whatever they do. */
   blocked?: ReadonlySet<string>;
 }
 
 export const DEFAULT_MIN_AUTHORS = 5;
+
+/**
+ * Distinct origin servers a tag needs before it counts as a community.
+ *
+ * Four, from the live data. Every tag that turned out to be a news farm sat at
+ * one to three servers, and every genuine community at thirty-one to sixty-nine.
+ * There was no overlap at all, which is why this is a hard floor rather than a
+ * weighting: nothing legitimate was anywhere near it.
+ *
+ * Three, and deliberately low. The floor is no longer doing the work of telling a
+ * publisher from a community: DEFAULT_MAX_AUTHORS_PER_SERVER does that, and does
+ * it without drifting. All this floor now does is exclude tags confined to one or
+ * two servers, which are a local timeline rather than federated activity and which
+ * this index would see only if it happened to monitor that server.
+ *
+ * Keeping it low matters. A high floor excluded small genuine communities:
+ * #buddhism was real at 7 authors across 3 servers and a floor of 4 would have
+ * dropped it.
+ */
+export const DEFAULT_MIN_ORIGIN_SERVERS = 3;
+
+/**
+ * Authors per server above which a tag is a publisher rather than a conversation.
+ *
+ * Five. This is the third signal tried, and the first that holds still, so the
+ * two failures are worth recording because they were the same mistake twice.
+ *
+ * Raw server count was calibrated on a two-and-a-half hour sample where the news
+ * farms sat at 2 to 3 servers. Twelve hours later they had crept to 4 to 7 and
+ * cleared a floor of 4. Breadth grows with observation time.
+ *
+ * Posts per author looked scale-free and was not. On the first sample the farms
+ * were at 6.3 and a genuine tag at 6.5, so it separated nothing; by the second the
+ * farms were at 12 to 25, which looked like a clean rule until #news reached 13.9
+ * on 99 servers and would have been retired as a bot farm. A busy genuine tag
+ * accumulates posts against a stable author pool, so its ratio climbs too.
+ *
+ * Authors per server holds because both terms grow together for a community and
+ * only one grows for a farm. A publisher adds accounts without adding servers; a
+ * conversation spreads across servers as it gains people. Measured at both
+ * sampling points, farms sat at 7 to 30 and genuine tags at 2.3 to 3.9, and
+ * neither cluster moved.
+ */
+export const DEFAULT_MAX_AUTHORS_PER_SERVER = 5;
+
+/**
+ * Mean hashtags per post above which a tag looks like a broadcast template.
+ *
+ * Not enforced. Published so the interface can flag it and so the decision to
+ * enforce it can be made against data rather than intuition.
+ */
+export const TAG_SPAM_ADVISORY = 10;
 
 /**
  * Ceiling on the tracked set.
@@ -67,9 +136,18 @@ export interface QueriedTag {
 /**
  * Choose candidates to start tracking.
  *
- * Strongest first, and only as many as there are free slots. A candidate that
- * clears the author threshold but finds no room simply stays a candidate: it is
- * still counted and still shown as discovered, it just is not polled yet.
+ * Two floors, and both must be cleared. Enough distinct authors, which stops one
+ * person posting repeatedly from earning a slot. And enough distinct origin
+ * servers, which stops a publisher running many accounts on one or two servers,
+ * because the author floor cannot tell that apart from a conversation.
+ *
+ * Ranked on server breadth rather than author count, because breadth is what the
+ * index exists to measure. A tag alive on forty servers is a topic moving across
+ * the network; a tag with more authors on five servers is a smaller thing, and
+ * with slots scarce the broader one earns the slot.
+ *
+ * A candidate that clears both floors but finds no room stays a candidate. It is
+ * still counted and still listed as discovered, it just is not polled yet.
  */
 export function selectPromotions(
   candidates: readonly Candidate[],
@@ -79,11 +157,22 @@ export function selectPromotions(
   if (slots === 0) return [];
 
   const minAuthors = limits.minAuthors ?? DEFAULT_MIN_AUTHORS;
+  const minServers = limits.minOriginServers ?? DEFAULT_MIN_ORIGIN_SERVERS;
+  const maxRatio = limits.maxAuthorsPerServer ?? DEFAULT_MAX_AUTHORS_PER_SERVER;
 
   return candidates
     .filter((candidate) => candidate.distinctAuthors >= minAuthors)
+    .filter((candidate) => candidate.distinctOriginServers >= minServers)
+    .filter(
+      (candidate) => candidate.distinctAuthors / candidate.distinctOriginServers <= maxRatio,
+    )
     .filter((candidate) => limits.blocked?.has(candidate.name) !== true)
-    .sort((a, b) => b.distinctAuthors - a.distinctAuthors || a.name.localeCompare(b.name))
+    .sort(
+      (a, b) =>
+        b.distinctOriginServers - a.distinctOriginServers ||
+        b.distinctAuthors - a.distinctAuthors ||
+        a.name.localeCompare(b.name),
+    )
     .slice(0, slots)
     .map((candidate) => candidate.name);
 }
@@ -254,4 +343,64 @@ export function selectExcessRetirements(
     .sort((a, b) => a.postsLast24h - b.postsLast24h || a.name.localeCompare(b.name))
     .slice(0, excess)
     .map((tag) => tag.id);
+}
+
+/** A tracked tag with the breadth figures needed to re-judge it. */
+export interface TrackedBreadth {
+  id: number;
+  name: string;
+  postsLast24h: number;
+  authorsLast24h: number;
+  originServersLast24h: number;
+  lastQueryAt: number | null;
+}
+
+/**
+ * Retire tracked tags that turn out not to be communities.
+ *
+ * The origin floor has to work backwards as well as forwards. The six news farms
+ * that got in before the rule existed are busy, so the quiet-tag retirement will
+ * never touch them, and they would sit on scarce slots indefinitely while genuine
+ * candidates queue behind them.
+ *
+ * Only judged once a tag has produced enough posts to judge on. A tag with three
+ * posts has narrow breadth because it is new, not because it is a broadcast, and
+ * retiring it for that would be a rule that punishes quiet tags for being quiet.
+ */
+export function selectNonCommunityRetirements(
+  tracked: readonly TrackedBreadth[],
+  limits: {
+    now: number;
+    minOriginServers?: number;
+    maxAuthorsPerServer?: number;
+    /** Posts needed before either signal is meaningful. */
+    minPostsToJudge?: number;
+    protectQueriedWithinSeconds?: number;
+  },
+): number[] {
+  const minServers = limits.minOriginServers ?? DEFAULT_MIN_ORIGIN_SERVERS;
+  const maxRatio = limits.maxAuthorsPerServer ?? DEFAULT_MAX_AUTHORS_PER_SERVER;
+  const minPosts = limits.minPostsToJudge ?? 20;
+  const protectWithin = limits.protectQueriedWithinSeconds ?? 24 * 3600;
+
+  return tracked
+    .filter((tag) => tag.postsLast24h >= minPosts)
+    .filter((tag) => {
+      // Either signal disqualifies, because they catch different shapes. Too few
+      // servers is a local timeline. Too many authors per server is a publisher
+      // running accounts in one place, whatever its absolute breadth.
+      if (tag.originServersLast24h < minServers) return true;
+      if (tag.originServersLast24h === 0) return false;
+      return tag.authorsLast24h / tag.originServersLast24h > maxRatio;
+    })
+    .filter((tag) => tag.lastQueryAt === null || limits.now - tag.lastQueryAt >= protectWithin)
+    .map((tag) => tag.id);
+}
+
+/**
+ * Whether a tag's posts look like a broadcast template rather than people
+ * tagging. Advisory only, surfaced in the interface rather than acted on.
+ */
+export function looksLikeTagSpam(meanTagsPerPost: number | null): boolean {
+  return meanTagsPerPost !== null && meanTagsPerPost >= TAG_SPAM_ADVISORY;
 }
