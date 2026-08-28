@@ -9,7 +9,7 @@ Six utterances, five tools:
 
 | Tool | Registers a query? | Renders in page? |
 |---|---|---|
-| `lookup_hashtag` | yes, like a search does | navigates to `/tag/:name` |
+| `lookup_hashtag` | yes, like a search does; the result says so | navigates to `/tag/:name` after returning |
 | `compare_hashtags` | yes, for each tag | yes, a comparison view |
 | `trending_hashtags` | no | no |
 | `describe_coverage` | no | no |
@@ -202,6 +202,14 @@ navigated to `/tags`, read the page, and gave correct figures with the
 monitored-servers caveat intact. No fabrication. So `trending_hashtags` earns
 its place through structured provenance and comparability, not by rescuing a
 wrong answer, which moved it down the build order.
+
+## Build status, 28 August 2026
+
+All five tools are built, deployed from `build-mvp`, and registered on every
+page. `evaluate_hashtags`, `trending_hashtags` and `compare_hashtags` are
+verified end to end in both judging browsers (see the notes under each
+utterance). `lookup_hashtag` and `describe_coverage` are deployed and awaiting
+the same browser verification.
 
 ## `lookup_hashtag`
 

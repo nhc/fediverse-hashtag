@@ -149,6 +149,8 @@ documents, and the test suite. None of it involved WebMCP or any agent tooling.
 | `d98670c` | 28 Aug 2026 | `evaluate_hashtags` tool, `/api/v1/evaluate` read-only endpoint, `src/suggest.ts` and tests, `src/webmcp.ts` registration served from the layout |
 | `8257a58` | 28 Aug 2026 | Entry plan against the official rules |
 
+| `ed5f28e`–`b3585f6` | 28 Aug 2026 | Native-API-first registration, `/webmcp` diagnostics, server-reported fallback, `trending_hashtags`, `compare_hashtags` with in-page rendering, `lookup_hashtag`, `describe_coverage` |
+
 Later commits on the branch continue the list. The full diff is the GitHub
 compare view `build-mvp...webmcp`. Every file under `docs/webmcp/`, plus
 `src/webmcp.ts` and `src/suggest.ts`, is new; the changes to `src/api.ts`,
