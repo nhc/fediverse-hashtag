@@ -216,7 +216,11 @@ confirmed #photography is already tracked and took you to its tag page".
 "Tell me about #obscurewheelthrowing" produced the refusal: not collected
 because the index is at its 50-tag limit, the lookup recorded it and queued
 it, the two servers' counters show zero, "but that's not evidence the tag is
-unused across the fediverse". `describe_coverage` awaits the same check.
+unused across the fediverse". `describe_coverage` verified 14:59 UK: the agent named the eight servers,
+treated the tags-only server as corroboration, and used the tool's phrasing
+line verbatim: "activity observed by this index across 8 monitored servers,"
+not "across the fediverse", adding that "there's no reliable way to calculate
+the missing share". All five tools are now verified in ChatGPT's browser.
 
 Noted for later, outside WebMCP: the tag page's Coverage panel grades a tag
 with zero observations as "thin", in red. Nothing observed is not thin
