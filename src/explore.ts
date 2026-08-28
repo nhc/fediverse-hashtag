@@ -4,8 +4,16 @@
  *
  * Kept free of HTML and of the database so the geometry can be tested. The two
  * charts encode the same argument the ranking makes in words: distinct authors
- * are the measure of a conversation, and posts per author is the measure of
- * whether a count is many people or one person repeating themselves.
+ * are the measure of a conversation, and authors per server is the measure of
+ * whether those authors are people spread across the network or accounts run in
+ * one place.
+ *
+ * The y axis was originally posts per author, which reads as the more intuitive
+ * measure of "one person repeating themselves". It was changed because that
+ * measure does not survive contact with a long sample: #news reached 13.9 posts
+ * per author on 99 servers, so the chart would have drawn the most active genuine
+ * tag in the index above the shouting line while the coverage page held it up as
+ * an example of a healthy one. See decision 17.
  */
 
 import type { Tier } from './types';
@@ -27,6 +35,8 @@ export interface ScatterPoint {
   x: number;
   y: number;
   r: number;
+  authorsPerServer: number;
+  /** Shown in the tooltip as context, not used for position. */
   postsPerAuthor: number;
 }
 
@@ -43,7 +53,13 @@ export const DEFAULT_FRAME: ScatterFrame = {
   pad: { top: 16, right: 24, bottom: 40, left: 48 },
 };
 
-/** Posts per author is the gap between a conversation and a megaphone. */
+/**
+ * Authors per server is the gap between a conversation and a megaphone.
+ *
+ * Five, matching DEFAULT_MAX_AUTHORS_PER_SERVER in discovery.ts, so the line on
+ * the chart is the same line promotion applies. If that constant moves, this
+ * should move with it, or the picture will stop matching the policy.
+ */
 export const SHOUTING_THRESHOLD = 5;
 
 /**
@@ -58,14 +74,26 @@ export function logScale(value: number, min: number, max: number, from: number, 
   return from + share * (to - from);
 }
 
-/** Dot radius grows with the square root of server count, so area is honest. */
-export function dotRadius(originServers: number, peak: number): number {
-  const share = peak <= 0 ? 0 : Math.sqrt(Math.max(0, originServers) / peak);
+/**
+ * Dot radius grows with the square root of post volume, so area is honest.
+ *
+ * Volume rather than server count, because servers are now on the y axis and
+ * encoding the same quantity twice would make the chart look like it was saying
+ * two things when it was saying one.
+ */
+export function dotRadius(posts: number, peak: number): number {
+  const share = peak <= 0 ? 0 : Math.sqrt(Math.max(0, posts) / peak);
   return 4 + share * 12;
 }
 
+/** Retained for display: it says how concentrated the posting is, not whether the tag is genuine. */
 export function postsPerAuthor(posts: number, authors: number): number {
   return authors <= 0 ? 0 : Math.round((posts / authors) * 10) / 10;
+}
+
+/** The y axis. Accounts per server, which is what separates people from a publisher. */
+export function authorsPerServer(authors: number, originServers: number): number {
+  return originServers <= 0 ? 0 : Math.round((authors / originServers) * 10) / 10;
 }
 
 /**
@@ -77,9 +105,9 @@ export function scatterPoints(tags: readonly ExploreTag[], frame: ScatterFrame =
   if (active.length === 0) return [];
 
   const maxAuthors = Math.max(...active.map((tag) => tag.authors24h));
-  const ratios = active.map((tag) => postsPerAuthor(tag.posts24h, tag.authors24h));
+  const ratios = active.map((tag) => authorsPerServer(tag.authors24h, tag.originServers));
   const maxRatio = Math.max(SHOUTING_THRESHOLD * 2, ...ratios);
-  const peakServers = Math.max(1, ...active.map((tag) => tag.originServers));
+  const peakPosts = Math.max(1, ...active.map((tag) => tag.posts24h));
 
   const left = frame.pad.left;
   const right = frame.width - frame.pad.right;
@@ -92,8 +120,9 @@ export function scatterPoints(tags: readonly ExploreTag[], frame: ScatterFrame =
       tag,
       x: round(logScale(tag.authors24h, 1, maxAuthors, left, right)),
       y: round(logScale(ratio, 1, maxRatio, bottom, top)),
-      r: round(dotRadius(tag.originServers, peakServers)),
-      postsPerAuthor: ratio,
+      r: round(dotRadius(tag.posts24h, peakPosts)),
+      authorsPerServer: ratio,
+      postsPerAuthor: postsPerAuthor(tag.posts24h, tag.authors24h),
     };
   });
 }
@@ -104,7 +133,7 @@ export function thresholdY(tags: readonly ExploreTag[], frame: ScatterFrame = DE
   if (active.length === 0) return null;
   const maxRatio = Math.max(
     SHOUTING_THRESHOLD * 2,
-    ...active.map((tag) => postsPerAuthor(tag.posts24h, tag.authors24h)),
+    ...active.map((tag) => authorsPerServer(tag.authors24h, tag.originServers)),
   );
   return round(logScale(SHOUTING_THRESHOLD, 1, maxRatio, frame.height - frame.pad.bottom, frame.pad.top));
 }

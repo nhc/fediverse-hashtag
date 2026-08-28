@@ -690,7 +690,14 @@ export function tagsPage(view: TagsView): string {
   <td class="num">${
     tag.postsPerAuthor === null
       ? '<span class="unavailable">&mdash;</span>'
-      : `<span class="${tag.postsPerAuthor >= 5 ? 'q-partial' : ''}">${tag.postsPerAuthor}</span>`
+      : tag.postsPerAuthor
+  }</td>
+  <td class="num">${
+    tag.originServers > 0
+      ? `<span class="${tag.authorsObserved / tag.originServers > 5 ? 'q-partial' : ''}">${
+          Math.round((tag.authorsObserved / tag.originServers) * 10) / 10
+        }</span>`
+      : '<span class="unavailable">&mdash;</span>'
   }</td>
   <td class="num">${formatCount(tag.authors1h)}</td>
   <td class="num">${formatCount(tag.originServers)}</td>
@@ -740,13 +747,17 @@ ${
   <th class="num">Authors 24h</th>
   <th class="num">Posts 24h</th>
   <th class="num">Posts per author</th>
+  <th class="num">Authors per server</th>
   <th class="num">Authors 1h</th>
   <th class="num">Servers</th>
   <th>Tier</th>
 </tr></thead>
 <tbody>${trackedRows}</tbody></table></div>
-<p class="note">Posts per author is highlighted above 5, where a tag is likely a
-few accounts posting a lot rather than a conversation.</p>`
+<p class="note">Authors per server is highlighted above 5, where the accounts using
+a tag are concentrated on few servers, which is what a publisher looks like rather
+than a conversation. Posts per author is shown as context and deliberately not
+flagged: a busy genuine tag climbs on that measure too.
+<a href="/coverage#how-tags-are-chosen">Why these are the tests</a>.</p>`
 }
 
 <h2>Discovered (${view.discovered.length})</h2>
@@ -909,14 +920,20 @@ export function explorePage(view: ExploreView): string {
     'Explore',
     `<h1>Explore</h1>
 <p class="statement">${escapeHtml(view.statement)}</p>
-<p class="note">Two views of the tracked set. The first asks whether a tag is a conversation or
-one person repeating themselves; the second shows the shape of each tag's day. Hover or click a
-tag in either to pick it out in both.</p>
+<p class="note">Two views of the tracked set. The first asks whether a tag is a conversation
+spread across the network or accounts run in one place; the second shows the shape of each tag's
+day. Hover or click a tag in either to pick it out in both.</p>
 
 <h2>Conversation or megaphone</h2>
-<p class="note">Right is many people; up is few people posting a lot. The dashed line is where
-posts per author passes ${SHOUTING_THRESHOLD}, above which a count is more likely a handful of
-accounts than a conversation. Dot size is how many different servers the posts came from.</p>
+<p class="note">Right is many people. Up is many of those people on few servers, which is what a
+publisher looks like: it adds accounts without adding servers, while a conversation reaches new
+people on new servers and both numbers grow together. The dashed line is
+${SHOUTING_THRESHOLD} authors per server, the same line
+<a href="/coverage#how-tags-are-chosen">promotion applies</a>. Dot size is post volume.</p>
+<p class="note">Posts per author is deliberately not the vertical axis, though it reads as the
+more obvious choice. It does not hold up over a long sample: <code>#news</code> reached 13.9 posts
+per author across 99 servers, so that axis would have drawn the most active genuine tag in this
+index above the line.</p>
 <div class="chart">${scatterSvg(view.tags)}
 <p class="legend"><span class="hot">Hot tier</span><span>Warm tier</span><span class="cold">Cold tier</span></p>
 </div>
