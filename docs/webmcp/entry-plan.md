@@ -8,6 +8,12 @@ there. If time runs out at any step, what is already submitted still counts.
 Official rules: <https://webmcp.devpost.com/rules>. Where this document and
 the rules disagree, the rules win.
 
+## Live site
+
+<https://fediverse-hashtag-index.neil-charlton.workers.dev>. Deployed from
+`build-mvp` only. Repository: <https://github.com/nhc/fediverse-hashtag>
+(private until submission; must be public by then).
+
 ## Dates, in UK time
 
 | What | Pacific | UK (BST) |
