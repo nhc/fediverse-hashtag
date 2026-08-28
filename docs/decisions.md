@@ -368,3 +368,54 @@ first version of this rule let the news feeds through.
 **Documented publicly.** The reasoning, the figures and the trade-off are on the
 coverage page under "How tags are chosen", because an index that asks to be trusted
 about what it counts should also explain what it chooses to watch.
+
+## 17. Authors per server, after two signals that drifted
+*28 August 2026, superseding the threshold in decision 16 the same day*
+
+**Decision.** Promotion and retirement gate on **authors per server**, capped at 5,
+with the origin-server floor lowered from 4 to 3 and the posts-per-author gate from
+decision 16 removed entirely.
+
+**Why the previous two failed.** Both failed the same way, and it is the lesson
+worth keeping: the signal moved as the sample deepened.
+
+Raw origin-server count, from decision 16, was calibrated on two and a half hours
+of data where the news farms sat at 2 to 3 servers and genuine tags at 31 to 69. A
+floor of 4 looked like it sat in an enormous gap. Twelve hours later the farms had
+crept to 4 to 7 servers and were clearing it. Breadth accumulates with observation
+time, so any absolute threshold on it drifts.
+
+Posts per author replaced it and was worse, because it was wrong in the dangerous
+direction. On the first sample it separated nothing at all: a genuine tag at 6.5 and
+a farm at 6.3. On the second it looked excellent, farms at 12 to 25 against genuine
+tags at 1.5 to 6.5. It was deployed on that basis and would have retired `#news` at
+13.9 posts per author on 99 servers, the single most active genuine tag in the
+index. Caught by inspecting the live figures before the next discovery pass ran.
+
+**Why this one holds.** Authors per server is a ratio of two quantities that grow
+together for a community and separately for a publisher. A feed adds accounts on the
+servers it already controls, so its numerator climbs and its denominator does not. A
+conversation reaches new people on new servers, so both climb and the ratio is
+flat. Measured at both sampling points twelve hours apart:
+
+| | 2.5 hours | 12 hours |
+|---|---|---|
+| `#headlines` | 30.0 | 16.8 |
+| `#topstories` | 7.7 | 8.3 |
+| `#news` | 3.6 | 3.9 |
+| `#photography` | 2.5 | 2.5 |
+| `#buddhism` | 2.3 | 2.3 |
+
+Farms 7 to 30, genuine 2.3 to 3.9, at both points. The clusters did not move, which
+is the property the other two signals lacked.
+
+**Consequence for the breadth floor.** Lowered to 3, because it no longer has to
+identify publishers and a higher floor does real harm: it would have excluded
+`#buddhism`, seven people across three servers and entirely genuine. Small
+communities are what this index should surface, so a test that mistakes small for
+fake is a bad test. The floor now only excludes one and two-server tags, which are
+local timelines rather than federated activity.
+
+**Lesson.** Before trusting a threshold, check whether the metric is stable under a
+longer sample. Two of the three signals tried here looked decisive on one snapshot
+and were not, and the second was deployed before that check was made.

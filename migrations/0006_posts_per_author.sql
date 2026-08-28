@@ -1,0 +1,33 @@
+-- A second, scale-free signal for telling a publisher from a community.
+--
+-- The origin-server floor added in 0005 was calibrated on a two-and-a-half hour
+-- sample, where the news farms showed 2 to 3 distinct servers against 31 to 69
+-- for genuine tags. Twelve hours later the farms had crept to 4 to 7 servers and
+-- were clearing a floor of 4. Server count grows with observation time, so a
+-- threshold set from a snapshot sits in the wrong place once the sample deepens.
+--
+-- Raising the floor is not the answer, because breadth is not scale-free. A small
+-- genuine community sits at low breadth too: #buddhism was 7 authors on 3 servers
+-- and is perfectly real. A high floor would exclude exactly the niche communities
+-- this index should be surfacing.
+--
+-- Posts per author is scale-free, and the extra observation time has made it
+-- discriminating in the way it was not before:
+--
+--   #headlines   19.0    #photography   1.5
+--   #topstories  19.1    #news          6.5
+--   #latestnews  24.6    #buddhism      3.0
+--   #de          11.8
+--
+-- It failed on the first sample only because the farms had not yet accumulated
+-- posts. A farm keeps posting from the same accounts, so its ratio climbs; a
+-- community gains authors as it gains posts, so its ratio stays flat. That
+-- divergence is the thing worth measuring.
+
+-- How many sightings of this tag came from this author.
+--
+-- Summed and divided by the row count, this gives posts per author for a
+-- candidate, which promotion can then gate on. The conflict clause on
+-- tag_candidate changes from DO NOTHING to incrementing this, so a repeat
+-- sighting now records evidence rather than being discarded.
+ALTER TABLE tag_candidate ADD COLUMN posts_seen INTEGER NOT NULL DEFAULT 1;

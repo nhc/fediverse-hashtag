@@ -23,6 +23,11 @@ export interface Candidate {
    * the monitored set.
    */
   distinctOriginServers: number;
+  /**
+   * Sightings divided by distinct authors. Scale-free, unlike breadth, so it
+   * judges a small community and a large one on the same terms.
+   */
+  postsPerAuthor: number | null;
   /** Mean hashtags on the posts carrying it. Recorded, not yet gated on. */
   meanTagsPerPost: number | null;
   firstSeen: number;
@@ -49,6 +54,8 @@ export interface PromotionLimits {
   minAuthors?: number;
   /** Distinct origin servers a candidate needs to count as a community. */
   minOriginServers?: number;
+  /** Authors per server above which a candidate is treated as a publisher. */
+  maxAuthorsPerServer?: number;
   /** Names never to promote, whatever they do. */
   blocked?: ReadonlySet<string>;
 }
@@ -63,14 +70,41 @@ export const DEFAULT_MIN_AUTHORS = 5;
  * There was no overlap at all, which is why this is a hard floor rather than a
  * weighting: nothing legitimate was anywhere near it.
  *
- * The cost of the floor is real and worth stating: a hashtag used entirely within
- * one instance's own community is excluded, however healthy it is. For an index
- * of activity *across* the network that is arguably correct, since a single-server
- * tag is that server's local timeline rather than federated activity, and this
- * index would see it only if it happened to monitor that server. It is still a
- * trade-off rather than a free win.
+ * Three, and deliberately low. The floor is no longer doing the work of telling a
+ * publisher from a community: DEFAULT_MAX_AUTHORS_PER_SERVER does that, and does
+ * it without drifting. All this floor now does is exclude tags confined to one or
+ * two servers, which are a local timeline rather than federated activity and which
+ * this index would see only if it happened to monitor that server.
+ *
+ * Keeping it low matters. A high floor excluded small genuine communities:
+ * #buddhism was real at 7 authors across 3 servers and a floor of 4 would have
+ * dropped it.
  */
-export const DEFAULT_MIN_ORIGIN_SERVERS = 4;
+export const DEFAULT_MIN_ORIGIN_SERVERS = 3;
+
+/**
+ * Authors per server above which a tag is a publisher rather than a conversation.
+ *
+ * Five. This is the third signal tried, and the first that holds still, so the
+ * two failures are worth recording because they were the same mistake twice.
+ *
+ * Raw server count was calibrated on a two-and-a-half hour sample where the news
+ * farms sat at 2 to 3 servers. Twelve hours later they had crept to 4 to 7 and
+ * cleared a floor of 4. Breadth grows with observation time.
+ *
+ * Posts per author looked scale-free and was not. On the first sample the farms
+ * were at 6.3 and a genuine tag at 6.5, so it separated nothing; by the second the
+ * farms were at 12 to 25, which looked like a clean rule until #news reached 13.9
+ * on 99 servers and would have been retired as a bot farm. A busy genuine tag
+ * accumulates posts against a stable author pool, so its ratio climbs too.
+ *
+ * Authors per server holds because both terms grow together for a community and
+ * only one grows for a farm. A publisher adds accounts without adding servers; a
+ * conversation spreads across servers as it gains people. Measured at both
+ * sampling points, farms sat at 7 to 30 and genuine tags at 2.3 to 3.9, and
+ * neither cluster moved.
+ */
+export const DEFAULT_MAX_AUTHORS_PER_SERVER = 5;
 
 /**
  * Mean hashtags per post above which a tag looks like a broadcast template.
@@ -124,10 +158,14 @@ export function selectPromotions(
 
   const minAuthors = limits.minAuthors ?? DEFAULT_MIN_AUTHORS;
   const minServers = limits.minOriginServers ?? DEFAULT_MIN_ORIGIN_SERVERS;
+  const maxRatio = limits.maxAuthorsPerServer ?? DEFAULT_MAX_AUTHORS_PER_SERVER;
 
   return candidates
     .filter((candidate) => candidate.distinctAuthors >= minAuthors)
     .filter((candidate) => candidate.distinctOriginServers >= minServers)
+    .filter(
+      (candidate) => candidate.distinctAuthors / candidate.distinctOriginServers <= maxRatio,
+    )
     .filter((candidate) => limits.blocked?.has(candidate.name) !== true)
     .sort(
       (a, b) =>
@@ -312,6 +350,7 @@ export interface TrackedBreadth {
   id: number;
   name: string;
   postsLast24h: number;
+  authorsLast24h: number;
   originServersLast24h: number;
   lastQueryAt: number | null;
 }
@@ -333,18 +372,27 @@ export function selectNonCommunityRetirements(
   limits: {
     now: number;
     minOriginServers?: number;
-    /** Posts needed before breadth is meaningful. */
+    maxAuthorsPerServer?: number;
+    /** Posts needed before either signal is meaningful. */
     minPostsToJudge?: number;
     protectQueriedWithinSeconds?: number;
   },
 ): number[] {
   const minServers = limits.minOriginServers ?? DEFAULT_MIN_ORIGIN_SERVERS;
+  const maxRatio = limits.maxAuthorsPerServer ?? DEFAULT_MAX_AUTHORS_PER_SERVER;
   const minPosts = limits.minPostsToJudge ?? 20;
   const protectWithin = limits.protectQueriedWithinSeconds ?? 24 * 3600;
 
   return tracked
     .filter((tag) => tag.postsLast24h >= minPosts)
-    .filter((tag) => tag.originServersLast24h < minServers)
+    .filter((tag) => {
+      // Either signal disqualifies, because they catch different shapes. Too few
+      // servers is a local timeline. Too many authors per server is a publisher
+      // running accounts in one place, whatever its absolute breadth.
+      if (tag.originServersLast24h < minServers) return true;
+      if (tag.originServersLast24h === 0) return false;
+      return tag.authorsLast24h / tag.originServersLast24h > maxRatio;
+    })
     .filter((tag) => tag.lastQueryAt === null || limits.now - tag.lastQueryAt >= protectWithin)
     .map((tag) => tag.id);
 }

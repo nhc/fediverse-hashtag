@@ -38,6 +38,7 @@ import {
   windowCounts,
 } from './db';
 import {
+  DEFAULT_MAX_AUTHORS_PER_SERVER,
   DEFAULT_MIN_AUTHORS,
   DEFAULT_MIN_ORIGIN_SERVERS,
   looksLikeTagSpam,
@@ -342,13 +343,17 @@ export async function buildTagsData(
       promotion_rule: {
         min_distinct_authors: DEFAULT_MIN_AUTHORS,
         min_distinct_origin_servers: DEFAULT_MIN_ORIGIN_SERVERS,
+        max_authors_per_server: DEFAULT_MAX_AUTHORS_PER_SERVER,
         why:
           'Two thresholds because one is not enough. Distinct authors stops a ' +
           'single person posting repeatedly. Distinct origin servers stops a ' +
           'publisher running many accounts on one or two servers, which the author ' +
           'threshold alone counts as a crowd. Measured on this index, every tag ' +
-          'that turned out to be an automated news feed came from 1 to 3 servers ' +
-          'and every genuine community from 31 to 69.',
+          'that turned out to be an automated feed concentrated its accounts on a ' +
+          'few servers, at 7 to 30 authors per server, while every genuine ' +
+          'community sat at 2.3 to 3.9. A publisher adds accounts without adding ' +
+          'servers; a conversation spreads across servers as it gains people, so ' +
+          'the ratio stays flat as the tag grows.',
         ranked_by: 'distinct origin servers, then distinct authors',
         advisory_tag_spam_threshold: TAG_SPAM_ADVISORY,
       },
@@ -356,11 +361,18 @@ export async function buildTagsData(
         tag: candidate.name,
         authors_observed: candidate.distinctAuthors,
         origin_servers: candidate.distinctOriginServers,
+        posts_per_author: candidate.postsPerAuthor,
         mean_tags_per_post: candidate.meanTagsPerPost,
         looks_like_tag_spam: looksLikeTagSpam(candidate.meanTagsPerPost),
+        authors_per_server:
+          candidate.distinctOriginServers > 0
+            ? Math.round((candidate.distinctAuthors / candidate.distinctOriginServers) * 10) / 10
+            : null,
         would_promote:
           candidate.distinctAuthors >= DEFAULT_MIN_AUTHORS &&
-          candidate.distinctOriginServers >= DEFAULT_MIN_ORIGIN_SERVERS,
+          candidate.distinctOriginServers >= DEFAULT_MIN_ORIGIN_SERVERS &&
+          candidate.distinctAuthors / candidate.distinctOriginServers <=
+            DEFAULT_MAX_AUTHORS_PER_SERVER,
         first_seen: new Date(candidate.firstSeen * 1000).toISOString(),
         url: `/tag/${encodeURIComponent(candidate.name)}`,
       })),

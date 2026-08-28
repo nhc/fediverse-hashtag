@@ -413,39 +413,52 @@ and some have to lose one.</p>
 collected for one hashtag usually carries others, and those become candidates. It
 costs nothing to see them, because the request has already been made.</p>
 
-<h3>Two thresholds, because one is not enough</h3>
-<p>A candidate needs <strong>at least 5 distinct authors</strong> and <strong>at
-least 4 distinct origin servers</strong> before it is polled.</p>
-<p>The author threshold is the obvious one. It stops a single enthusiastic account
+<h3>Three tests, and why it took three tries</h3>
+<p>A candidate needs <strong>at least 5 distinct authors</strong>, <strong>at least
+3 distinct origin servers</strong>, and <strong>no more than 5 authors per
+server</strong> before it is polled.</p>
+<p>The author count is the obvious test. It stops a single enthusiastic account
 earning a slot by posting the same tag two hundred times, and counting distinct
 people rather than uses is what makes that impossible rather than merely
-discouraged.</p>
-<p>The server threshold was added after the first night of running, because the
-author threshold alone was not enough and the reason is worth explaining. An
-automated news feed running fifteen accounts on two servers has fifteen genuinely
-distinct authors. By author count it looks exactly like a conversation. By any
-ratio of posts to authors it also looks fine: on this index a legitimate tag was
-running at 6.5 posts per author and an automated feed at 6.3.</p>
-<p>What separated them cleanly was how many different servers the posts came from:</p>
+unlikely.</p>
+<p>It is not enough on its own, and the reason is worth explaining because it took
+two failed attempts to get right. An automated news feed running fifteen accounts
+on two servers has fifteen genuinely distinct authors. By author count it is
+indistinguishable from a conversation.</p>
+<p>The first attempt required a minimum number of origin servers. That worked on
+the sample it was built from, where the feeds sat at 2 to 3 servers and genuine tags
+at 31 to 69. Twelve hours later the feeds had reached 4 to 7 servers and were
+passing the test. Breadth grows the longer you watch, so a threshold set from a
+snapshot ends up in the wrong place.</p>
+<p>The second attempt was posts per author, which looked independent of scale and
+was not. It would have retired <code>#news</code>, one of the most active genuine
+tags in the index, because a busy tag accumulates posts against a stable pool of
+authors and its ratio climbs just as a feed's does.</p>
+<p>What holds still is <strong>authors per server</strong>:</p>
 <div class="scroll"><table>
-<thead><tr><th>Tag</th><th class="num">Posts</th><th class="num">Authors</th><th class="num">Origin servers</th></tr></thead>
+<thead><tr><th>Tag</th><th class="num">Authors</th><th class="num">Servers</th><th class="num">Authors per server</th></tr></thead>
 <tbody>
-<tr><td>an automated news feed</td><td class="num">197</td><td class="num">14</td><td class="num">2</td></tr>
-<tr><td>another</td><td class="num">375</td><td class="num">60</td><td class="num">2</td></tr>
-<tr><td>#photography</td><td class="num">234</td><td class="num">161</td><td class="num">65</td></tr>
-<tr><td>#news</td><td class="num">1612</td><td class="num">249</td><td class="num">69</td></tr>
+<tr><td>an automated feed</td><td class="num">67</td><td class="num">4</td><td class="num">16.8</td></tr>
+<tr><td>another</td><td class="num">33</td><td class="num">4</td><td class="num">8.3</td></tr>
+<tr><td>#news</td><td class="num">384</td><td class="num">99</td><td class="num">3.9</td></tr>
+<tr><td>#photography</td><td class="num">161</td><td class="num">65</td><td class="num">2.5</td></tr>
+<tr><td>#buddhism</td><td class="num">7</td><td class="num">3</td><td class="num">2.3</td></tr>
 </tbody></table></div>
-<p>Every tag that turned out to be automated sat at one to three servers. Every
-genuine one sat at thirty-one to sixty-nine. There was no overlap, which is why
-this is a firm threshold rather than a weighting.</p>
+<p>A publisher adds accounts without adding servers. A conversation spreads across
+servers as it gains people, so both numbers grow together and the ratio stays flat
+however large the tag gets. Measured at two points twelve hours apart, the feeds sat
+at 7 to 30 and the genuine tags at 2.3 to 3.9, and neither cluster moved.</p>
 
-<h3>What that threshold costs</h3>
-<p>It excludes hashtags used entirely within a single server's own community,
-however healthy those are. For an index of activity <em>across</em> the network
-that is arguably the right call, since a single-server tag is that server's local
-timeline rather than federated activity, and this index would only see it at all
-if it happened to monitor that server. It is still a trade-off rather than a free
-win, and it is worth knowing if a tag you care about is missing.</p>
+<h3>What these tests cost</h3>
+<p>The server floor is deliberately low, at three, because it is no longer doing the
+work of spotting publishers. It only excludes hashtags confined to one or two
+servers. Those are a single server's local timeline rather than activity across the
+network, and this index would see them at all only if it happened to monitor that
+server.</p>
+<p>Keeping it low matters. An earlier, higher floor would have excluded
+<code>#buddhism</code>, a real community of seven people across three servers. Small
+communities are exactly what an index like this should surface, so a test that
+mistakes small for fake is a bad test.</p>
 
 <h3>Losing a slot</h3>
 <p>A tag stops being polled when it has produced nothing for a day and nobody has
@@ -466,11 +479,10 @@ than showing you windows and letting you assume it is.</p>
 <h3>One signal recorded but not acted on</h3>
 <p>The average number of hashtags on the posts carrying a tag is measured and shown
 on the <a href="/tags">all tags</a> page. A post with fifteen hashtags is a
-broadcast and a person tagging usually manages three, so this would catch an
-automated feed spread across enough servers to pass the threshold above. That has
-not been observed yet, so it is measured and published rather than enforced.
-Guessing at thresholds without data is how the first version of these rules let
-the news feeds in.</p>
+broadcast and a person tagging usually manages three. It is published rather than
+enforced, because nothing has yet slipped through that it would have caught, and
+guessing at thresholds without evidence is precisely what the two failed attempts
+above did wrong.</p>
 
 <h2>Monitored servers</h2>
 <p class="note">Capability is probed per server and re-probed weekly. It is never

@@ -540,7 +540,8 @@ export async function recordCandidates(
       .prepare(
         `INSERT INTO tag_candidate (name, author_hash, first_seen, origin_host, tags_on_post)
          VALUES (?1, ?2, ?3, ?4, ?5)
-         ON CONFLICT(name, author_hash) DO NOTHING`,
+         ON CONFLICT(name, author_hash) DO UPDATE
+            SET posts_seen = tag_candidate.posts_seen + 1`,
       )
       .bind(row.name, blob(row.authorHash), now, row.originHost, row.tagsOnPost),
   );
@@ -564,6 +565,7 @@ export async function loadCandidates(
     name: string;
     distinctAuthors: number;
     distinctOriginServers: number;
+    postsPerAuthor: number | null;
     meanTagsPerPost: number | null;
     firstSeen: number;
   }[]
@@ -575,6 +577,7 @@ export async function loadCandidates(
       `SELECT c.name                            AS name,
               COUNT(*)                          AS authors,
               COUNT(DISTINCT c.origin_host)     AS servers,
+              SUM(c.posts_seen)                 AS sightings,
               AVG(c.tags_on_post)               AS mean_tags,
               MIN(c.first_seen)                 AS first_seen
          FROM tag_candidate c
@@ -590,6 +593,7 @@ export async function loadCandidates(
       name: string;
       authors: number;
       servers: number;
+      sightings: number | null;
       mean_tags: number | null;
       first_seen: number;
     }>();
@@ -598,6 +602,12 @@ export async function loadCandidates(
     name: row.name,
     distinctAuthors: row.authors,
     distinctOriginServers: row.servers,
+    // Null rather than 1 when there is only one sighting per author, because a
+    // ratio of exactly 1 from thin evidence should not read as a strong pass.
+    postsPerAuthor:
+      row.sightings === null || row.authors === 0 || row.sightings <= row.authors
+        ? null
+        : Math.round((row.sightings / row.authors) * 10) / 10,
     meanTagsPerPost: row.mean_tags === null ? null : Math.round(row.mean_tags * 10) / 10,
     firstSeen: row.first_seen,
   }));
@@ -619,6 +629,7 @@ export async function trackedBreadth(
     id: number;
     name: string;
     postsLast24h: number;
+    authorsLast24h: number;
     originServersLast24h: number;
     lastQueryAt: number | null;
   }[]
@@ -627,6 +638,7 @@ export async function trackedBreadth(
     .prepare(
       `SELECT t.id AS id, t.name AS name, t.last_query_at AS lastQueryAt,
               COUNT(o.uri)                  AS posts,
+              COUNT(DISTINCT o.author_hash) AS authors,
               COUNT(DISTINCT o.origin_host) AS servers
          FROM tag t
          LEFT JOIN observation o
@@ -635,12 +647,20 @@ export async function trackedBreadth(
         GROUP BY t.id`,
     )
     .bind(now - 86_400)
-    .all<{ id: number; name: string; lastQueryAt: number | null; posts: number; servers: number }>();
+    .all<{
+      id: number;
+      name: string;
+      lastQueryAt: number | null;
+      posts: number;
+      authors: number;
+      servers: number;
+    }>();
 
   return (results ?? []).map((row) => ({
     id: row.id,
     name: row.name,
     postsLast24h: row.posts,
+    authorsLast24h: row.authors,
     originServersLast24h: row.servers,
     lastQueryAt: row.lastQueryAt,
   }));
