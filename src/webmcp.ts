@@ -230,7 +230,137 @@ export const WEBMCP_SCRIPT = `
     }
   };
 
-  var tools = [evaluateHashtags, trendingHashtags, compareHashtags];
+  // The one tool with a side effect, said in its description and in its result.
+  // A lookup is a search: it registers the tag as requested and can start
+  // collection if there is room under the ceiling. The page moves to the tag
+  // afterwards, a beat after the result is returned so the host has it.
+  function windowFigures(w) {
+    if (!w) return null;
+    var direction = !w.coverage_comparable ? 'not_comparable'
+      : w.trend === null ? 'insufficient'
+      : w.trend > 0.1 ? 'up' : w.trend < -0.1 ? 'down' : 'flat';
+    return {
+      posts_observed: w.posts_observed,
+      authors_observed: w.authors_observed,
+      posts_per_author: w.authors_observed > 0 ? Math.round((w.posts_observed / w.authors_observed) * 10) / 10 : null,
+      instances_reporting: w.instances_reporting,
+      trend: {
+        direction: direction,
+        change: w.trend === null ? null : Math.round(w.trend * 100) / 100,
+        comparable: !!w.coverage_comparable,
+        reason: !w.coverage_comparable
+          ? 'This window and the one before it were reported by different shares of the monitored servers, so a change in the count could be a change in coverage.'
+          : w.trend === null ? 'Nothing in the previous window to compare against.' : null
+      }
+    };
+  }
+
+  var lookupHashtag = {
+    name: 'lookup_hashtag',
+    description:
+      'Look up ONE hashtag in depth: posts and distinct accounts over 5 minutes, ' +
+      '1 hour and 24 hours, trend with a comparability flag, which servers ' +
+      'contributed, coverage quality (good, partial, thin) and freshness. Read ' +
+      'status first: insufficient_data means no reliable figure exists yet and ' +
+      'reason says why. Every figure is what this index can see from the servers ' +
+      'it monitors, not a fediverse count. SIDE EFFECT: a lookup is a search. It ' +
+      'registers the tag as requested and may start collecting it. For several ' +
+      'tags, or to check candidates for a post, use evaluate_hashtags, which ' +
+      'registers nothing. Moves the page to the tag afterwards.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tag: { type: 'string', minLength: 1, maxLength: 100,
+               description: 'The hashtag, with or without the leading #.' },
+        window: { type: 'string', enum: ['5m', '1h', '24h'], default: '24h',
+                  description: 'Which window to headline. All are returned.' }
+      },
+      required: ['tag']
+    },
+    async execute(args) {
+      if (typeof args === 'string') { try { args = JSON.parse(args); } catch (e) { args = {}; } }
+      var raw = String((args && args.tag) || '').trim().replace(/^#/, '');
+      var windowKey = (args && args.window) || '24h';
+      if (!raw) return asText({ status: 'invalid_tag', reason: 'No hashtag given.' });
+      var res = await fetch('/api/v1/tags/' + encodeURIComponent(raw), { headers: { 'x-webmcp-tool': 'lookup_hashtag' } });
+      var d = await res.json();
+      if (!res.ok || !d.tag) return asText({ status: 'invalid_tag', reason: d.error || 'Not a usable hashtag.' });
+
+      var w24 = d.windows && d.windows['24h'];
+      var observed = w24 ? w24.posts_observed : 0;
+      var history = d.instance_daily_counters;
+      var result = {
+        status: observed > 0 ? 'ok' : 'insufficient_data',
+        tag: d.tag,
+        display: d.display,
+        as_of: d.as_of,
+        statement: d.statement,
+        provenance: {
+          instances_monitored: d.coverage.instances_monitored,
+          instances_healthy: d.coverage.instances_monitored - (d.coverage.instances_degraded || []).length,
+          instances_reporting_24h: d.coverage.instances_reporting,
+          reported_by: d.coverage.reported_by,
+          last_successful_update: d.coverage.last_successful_update,
+          coverage: d.coverage.quality,
+          median_instances_seeing_a_post: d.coverage.median_instances_per_post,
+          origin_servers_24h: d.coverage.unique_origin_servers,
+          poll_interval_seconds: d.tracking.poll_interval_seconds,
+          completeness: 'partial'
+        },
+        side_effects: {
+          query_registered: true,
+          tracked: d.tracking.tracked,
+          newly_tracked: !!(d.tracking.newly_registered && d.tracking.tracked),
+          capacity_note: d.tracking.capacity_note
+        },
+        page: { navigating_to: '/tag/' + encodeURIComponent(d.tag) }
+      };
+      if (result.status === 'ok') {
+        result.headline = windowFigures(d.windows[windowKey] || w24);
+        result.headline_window = d.windows[windowKey] ? windowKey : '24h';
+        result.windows = { '5m': windowFigures(d.windows['5m']), '1h': windowFigures(d.windows['1h']), '24h': windowFigures(w24) };
+        result.top_origin_servers = (d.origins || []).slice(0, 5);
+      } else {
+        result.reason = d.tracking.tracked
+          ? (d.tracking.newly_registered
+              ? 'This index was not watching the tag until this lookup registered it. Collection starts on the next tick; nothing has been observed yet.'
+              : 'Tracked, but nothing observed in the last 24 hours.')
+          : 'Not being collected: the tracked set is at its ceiling. Recorded as requested.';
+        result.what_would_change_it = d.tracking.tracked
+          ? 'Ask again after the next collection tick (a few minutes).'
+          : 'A slot freeing up in the tracked set; this tag is at the front of the queue.';
+      }
+      if (history && history.days && history.days.length) {
+        result.server_reported_history = {
+          note: history.note + ' Server-reported, not observed; do not merge with the figures above.',
+          source_servers: Array.from(new Set(history.days.map(function (x) { return x.host; }))),
+          days: history.days
+        };
+      }
+      setTimeout(function () { try { location.assign('/tag/' + encodeURIComponent(d.tag)); } catch (e) {} }, 400);
+      return asText(result);
+    }
+  };
+
+  var describeCoverage = {
+    name: 'describe_coverage',
+    description:
+      'What this index can and cannot see: which servers it monitors and their ' +
+      'capability, how tags are chosen, known limitations, and the opt-out route. ' +
+      'Call this before making claims about "the fediverse" from any figure here, ' +
+      'and when a person asks how much of the network the site covers or how the ' +
+      'numbers are produced. Read-only, no side effects.',
+    inputSchema: { type: 'object', properties: {} },
+    async execute() {
+      var res = await fetch('/api/v1/coverage', { headers: { 'x-webmcp-tool': 'describe_coverage' } });
+      var d = await res.json();
+      d.side_effects = { queries_registered: 0 };
+      d.how_to_phrase_it = 'Say "observed by this index across N monitored servers", never "across the fediverse". No server can see the whole network, so no complete count exists.';
+      return asText(d);
+    }
+  };
+
+  var tools = [evaluateHashtags, trendingHashtags, compareHashtags, lookupHashtag, describeCoverage];
 
   function register() {
     if (registered) return;

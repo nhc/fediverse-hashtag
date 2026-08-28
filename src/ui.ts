@@ -976,6 +976,11 @@ The design, and why the tools look the way they do, is in the repository under
   compared. Read-only.</li>
   <li><code>compare_hashtags</code>: two to four hashtags side by side, rendered
   into the page you are looking at as well as returned to the agent. Read-only.</li>
+  <li><code>lookup_hashtag</code>: one hashtag in depth, with every figure's
+  provenance and a plain refusal when there is not enough to answer. This one
+  is a search: it registers the tag and may start collecting it, and says so.</li>
+  <li><code>describe_coverage</code>: what the index can and cannot see, so an
+  agent learns the limits before it makes claims. Read-only.</li>
 </ul>
 <p class="note">Try asking your agent, on any page of this site: “I’m writing a
 post, which hashtags fit it best?” followed by the draft.</p>
