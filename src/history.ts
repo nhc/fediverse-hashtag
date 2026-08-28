@@ -101,3 +101,79 @@ export async function ensureTagHistory(
 
   return stored;
 }
+
+/**
+ * Ask servers about a tag without giving it a row in the database.
+ *
+ * For evaluating hashtags somebody might use. The stored history above is keyed
+ * by tag id, and the only way to mint one is to register a query, which is the
+ * signal an evaluation must not send. So this path stores nothing in D1 and
+ * caches in the Worker's HTTP cache instead, keyed by tag, for six hours. A
+ * miss costs two small fetches; a failure returns nothing rather than throwing.
+ */
+export async function askServersAboutTag(
+  env: Env,
+  tagName: string,
+  now: number,
+): Promise<{ host: string; days: { day: number; uses: number; accounts: number }[] }[]> {
+  const cacheKey = new Request(
+    `https://cache.invalid/tag-history/${encodeURIComponent(tagName)}`,
+  );
+  const cache = (caches as unknown as { default: Cache }).default;
+  try {
+    const hit = await cache.match(cacheKey);
+    if (hit !== undefined) return (await hit.json()) as Awaited<ReturnType<typeof askServersAboutTag>>;
+  } catch {
+    // No cache in this runtime. Fetch every time.
+  }
+
+  const instances = await loadInstances(env.DB);
+  const sources = instances
+    .filter((instance) => instance.opt_out === 0)
+    .filter(
+      (instance) => instance.capability === 'timeline' || instance.capability === 'tags_only',
+    )
+    .filter((instance) => instance.backoff_until === null || instance.backoff_until <= now)
+    .sort((a, b) => a.host.localeCompare(b.host))
+    .slice(0, MAX_SOURCES);
+
+  const reports = await Promise.all(
+    sources.map(async (instance) => {
+      try {
+        const outcome = await fetchTagMetadata(instance.host, tagName, {
+          userAgent: env.COLLECTOR_USER_AGENT,
+          timeoutMs: 4000,
+        });
+        if (!outcome.ok || outcome.data === null) return null;
+        const days = (outcome.data.history ?? [])
+          .map((entry) => ({
+            day: Number.parseInt(entry.day, 10),
+            uses: Number.parseInt(entry.uses, 10),
+            accounts: Number.parseInt(entry.accounts, 10),
+          }))
+          .filter(
+            (entry) =>
+              Number.isFinite(entry.day) &&
+              Number.isFinite(entry.uses) &&
+              Number.isFinite(entry.accounts),
+          );
+        return { host: instance.host, days };
+      } catch {
+        return null;
+      }
+    }),
+  );
+  const result = reports.filter((r): r is NonNullable<typeof r> => r !== null);
+
+  try {
+    await cache.put(
+      cacheKey,
+      new Response(JSON.stringify(result), {
+        headers: { 'content-type': 'application/json', 'cache-control': `max-age=${FRESH_FOR_SECONDS}` },
+      }),
+    );
+  } catch {
+    // Uncacheable here. Fine.
+  }
+  return result;
+}

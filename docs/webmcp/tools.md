@@ -153,9 +153,30 @@ result says `side_effects.queries_registered: 0`. Each candidate carries a
 beside it mean, because sightings from the discovery pool and observations from
 polling are different evidence and must not be read as the same number.
 
-Status: built. `src/suggest.ts` (pure, tested), `candidateStats` in
-`src/db.ts`, `evaluateResponse` in `src/api.ts`, registered in
-`src/webmcp.ts` and served from the shared layout.
+Status: built and tested live in both judging browsers (28 Aug 2026).
+
+**What happened in ChatGPT's browser.** Given a pottery draft, the agent
+proposed ten candidates itself, made one tool call, and reported them as
+"unseen ... no activity evidence to rank them; that does not mean the tags are
+unused across the wider Fediverse". Exactly the framing wanted. But all ten
+*were* unseen, because the discovery pool only holds tags that co-occurred with
+the 50 tracked tags on 8 servers in 48 hours, and an entire hobby community can
+sit outside that. Honest, but useless for the long tail.
+
+**Fallback added.** For `unseen` candidates the endpoint asks two servers for
+their own daily counters (the same `/api/v1/tags/:name` path a cold search
+uses), fetched live and cached in the Worker's HTTP cache for six hours. No D1
+row is created, because minting a tag id is the query signal this tool must not
+send. The result appears under `server_reported` with its own note, and the
+reading becomes "Not seen by this index, but 2 servers asked directly report
+about 20 accounts using it in the last seven days. Server-reported, not
+observed." Totals are summed across servers without deduplication and say so.
+
+**Asked "which hashtags are trending?"** with no tool for it, the agent
+navigated to `/tags`, read the page, and gave correct figures with the
+monitored-servers caveat intact. No fabrication. So `trending_hashtags` earns
+its place through structured provenance and comparability, not by rescuing a
+wrong answer, which moved it down the build order.
 
 ## `lookup_hashtag`
 

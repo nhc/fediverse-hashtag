@@ -233,3 +233,79 @@ export function evaluateCandidates(
   );
   return evaluated;
 }
+
+/**
+ * What servers say about a tag the index has not seen.
+ *
+ * A different kind of number to everything else here: each server's own daily
+ * counters, at day granularity, for the last week. Presented under its own key
+ * and never folded into the observed figures. It answers the question the
+ * index otherwise cannot, "does anybody use this at all", for the long tail of
+ * tags outside the tracked set and its discovery pool.
+ */
+export interface ServerReportedDay {
+  day: number;
+  uses: number;
+  accounts: number;
+}
+
+export interface ServerReport {
+  host: string;
+  days: readonly ServerReportedDay[];
+}
+
+export interface ServerReportedSummary {
+  note: string;
+  source_servers: string[];
+  /** Sum across servers. Not deduplicated between servers: an upper bound. */
+  uses_7d: number;
+  accounts_7d: number;
+  /** Highest single-day account count on any one server. */
+  peak_day_accounts: number;
+  per_server: Array<{ host: string; uses_7d: number; accounts_7d: number }>;
+}
+
+export const SERVER_REPORTED_NOTE =
+  'Daily counters the servers keep about themselves, for the last seven days. ' +
+  'A different source at a different granularity from the observed figures, ' +
+  'and totals are summed across servers without deduplication, so treat them ' +
+  'as an indication that the tag is in use, not as a count.';
+
+/** Summarise per-server counters. Null when no server reported anything. */
+export function summariseServerReports(reports: readonly ServerReport[]): ServerReportedSummary | null {
+  const perServer = reports
+    .filter((r) => r.days.length > 0)
+    .map((r) => ({
+      host: r.host,
+      uses_7d: r.days.reduce((n, d) => n + d.uses, 0),
+      accounts_7d: r.days.reduce((n, d) => n + d.accounts, 0),
+      peak: r.days.reduce((n, d) => Math.max(n, d.accounts), 0),
+    }))
+    .sort((a, b) => a.host.localeCompare(b.host));
+  if (perServer.length === 0) return null;
+  return {
+    note: SERVER_REPORTED_NOTE,
+    source_servers: perServer.map((s) => s.host),
+    uses_7d: perServer.reduce((n, s) => n + s.uses_7d, 0),
+    accounts_7d: perServer.reduce((n, s) => n + s.accounts_7d, 0),
+    peak_day_accounts: perServer.reduce((n, s) => Math.max(n, s.peak), 0),
+    per_server: perServer.map(({ host, uses_7d, accounts_7d }) => ({ host, uses_7d, accounts_7d })),
+  };
+}
+
+/**
+ * The reading for an unseen tag once servers have been asked. Replaces
+ * "No evidence either way" with what they said, in the same register.
+ */
+export function unseenReading(summary: ServerReportedSummary | null): string {
+  if (summary === null) return 'No evidence either way.';
+  if (summary.accounts_7d === 0) {
+    return `Not seen by this index, and ${summary.source_servers.length} server(s) asked directly report no use in the last seven days.`;
+  }
+  const n = summary.source_servers.length;
+  return (
+    `Not seen by this index, but ${n} server${n === 1 ? '' : 's'} asked directly ` +
+    `report${n === 1 ? 's' : ''} about ${summary.accounts_7d} account${summary.accounts_7d === 1 ? '' : 's'} using it ` +
+    `in the last seven days (${summary.uses_7d} uses). Server-reported, not observed.`
+  );
+}

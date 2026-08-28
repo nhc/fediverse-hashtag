@@ -4,6 +4,8 @@ import {
   evaluateCandidates,
   MAX_CANDIDATES,
   normaliseCandidates,
+  summariseServerReports,
+  unseenReading,
   type DiscoveredEvidence,
   type TrackedEvidence,
 } from '../src/suggest';
@@ -171,5 +173,37 @@ describe('the two shapes of megaphone', () => {
     );
     expect(buddhism?.reading).toContain('many different accounts');
     expect(buddhism?.reading).not.toContain('publisher');
+  });
+});
+
+describe('server-reported fallback for unseen tags', () => {
+  it('summarises across servers and keeps the per-server split', () => {
+    const s = summariseServerReports([
+      { host: 'b.example', days: [{ day: 1, uses: 5, accounts: 3 }, { day: 2, uses: 2, accounts: 2 }] },
+      { host: 'a.example', days: [{ day: 1, uses: 10, accounts: 8 }] },
+    ]);
+    expect(s?.source_servers).toEqual(['a.example', 'b.example']);
+    expect(s?.uses_7d).toBe(17);
+    expect(s?.accounts_7d).toBe(13);
+    expect(s?.peak_day_accounts).toBe(8);
+    expect(s?.note).toContain('without deduplication');
+  });
+
+  it('is null when nobody reported, and drops servers with no days', () => {
+    expect(summariseServerReports([])).toBeNull();
+    expect(summariseServerReports([{ host: 'x', days: [] }])).toBeNull();
+  });
+
+  it('reads as server-reported, never as observed', () => {
+    const s = summariseServerReports([{ host: 'a', days: [{ day: 1, uses: 31, accounts: 20 }] }]);
+    expect(unseenReading(s)).toBe(
+      'Not seen by this index, but 1 server asked directly reports about 20 accounts using it in the last seven days (31 uses). Server-reported, not observed.',
+    );
+    expect(unseenReading(null)).toBe('No evidence either way.');
+  });
+
+  it('says so when servers were asked and report nothing', () => {
+    const s = summariseServerReports([{ host: 'a', days: [{ day: 1, uses: 0, accounts: 0 }] }]);
+    expect(unseenReading(s)).toContain('report no use');
   });
 });

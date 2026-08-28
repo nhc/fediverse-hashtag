@@ -49,9 +49,15 @@ import {
   TAG_SPAM_ADVISORY,
   type DiscoveryOrder,
 } from './discovery';
-import { ensureTagHistory } from './history';
+import { askServersAboutTag, ensureTagHistory } from './history';
 import { casefoldTag } from './normalise';
-import { evaluateCandidates, MAX_CANDIDATES, normaliseCandidates } from './suggest';
+import {
+  evaluateCandidates,
+  MAX_CANDIDATES,
+  normaliseCandidates,
+  summariseServerReports,
+  unseenReading,
+} from './suggest';
 import { isCollectable, isMonitored } from './registry';
 import { TIER_INTERVAL_SECONDS, type Env } from './types';
 
@@ -612,6 +618,22 @@ export async function evaluateResponse(env: Env, rawTags: string | null, now: nu
     discovered,
   );
 
+  // For tags the index has never seen, ask the servers themselves. This is the
+  // long tail: a niche post's every candidate can be unseen, and "no evidence"
+  // is honest but useless. The servers' own daily counters say whether anybody
+  // uses the tag at all. Fetched live, cached in the HTTP cache, no row minted.
+  const withReports = await Promise.all(
+    evaluated.map(async (candidate) => {
+      if (candidate.standing !== 'unseen') return candidate;
+      const summary = summariseServerReports(await askServersAboutTag(env, candidate.tag, now));
+      return {
+        ...candidate,
+        reading: unseenReading(summary),
+        ...(summary === null ? {} : { server_reported: summary }),
+      };
+    }),
+  );
+
   return json({
     as_of: new Date(now * 1000).toISOString(),
     completeness: 'partial',
@@ -622,7 +644,7 @@ export async function evaluateResponse(env: Env, rawTags: string | null, now: nu
       'judgement of fit: the index stores no post content and cannot read yours. ' +
       'An unseen tag may be in wide use on servers this index does not monitor.',
     side_effects: { queries_registered: 0 },
-    candidates: evaluated,
+    candidates: withReports,
     provenance: {
       instances_monitored: monitored.length,
       instances_healthy: monitored.filter((instance) => isCollectable(instance, now)).length,
