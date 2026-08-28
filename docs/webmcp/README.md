@@ -160,9 +160,15 @@ route and the script tag.
 - Should agent-originated lookups count as full query signals, or be
   de-weighted? We can tell them apart (the tool sets a header or query flag).
   Decide after seeing what agents actually do in testing.
-- Does the spec's `execute` return shape want `content: [{type: 'text'}]` with
-  JSON stringified inside, or does it accept structured content yet? Pin against
-  the WebMCP-org examples repo at build time, not memory.
+- ~~Return shape~~ Resolved 28 Aug 2026 against Chrome 149 with
+  `enable-webmcp-testing`: `content: [{type: 'text', text: <JSON string>}]`
+  works. Chrome exposes both `navigator.modelContext` and
+  `document.modelContext`, with `registerTool`, `getTools`, `executeTool` and
+  `ontoolchange`. `executeTool(tool, input)` takes the tool object from
+  `getTools()` and the input as a JSON string, hands `execute` a parsed object,
+  and returns the result envelope serialised as a string. Verified live:
+  `evaluate_hashtags` ran in-browser against the deployed API and returned
+  correct standings with `queries_registered: 0`.
 - Is one in-page tool enough, or does `lookup_hashtag` also navigate the tab to
   `/tag/:name`? Leaning yes: cheap, and it keeps the person and agent aligned.
 
