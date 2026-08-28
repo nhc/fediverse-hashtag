@@ -1062,3 +1062,42 @@ export async function sweep(
 }
 
 export type { Bind };
+
+/**
+ * Hourly post counts for every tracked tag over the last 24 hours, from the
+ * minute rollups. One query for the whole set; the explore page draws them side
+ * by side, so fetching them one tag at a time would be dozens of round trips.
+ *
+ * Returns 24 buckets per tag, oldest first, zero-filled. A tag with no rollups
+ * yet still gets a row of zeros so it appears on the page rather than vanishing.
+ */
+export async function hourlyPostsByTag(
+  db: D1Database,
+  now: number,
+  tagIds: readonly number[],
+): Promise<Map<number, number[]>> {
+  const hourNow = Math.floor(now / 3600);
+  const fromMinute = (hourNow - 23) * 60;
+
+  const series = new Map<number, number[]>();
+  for (const id of tagIds) series.set(id, new Array<number>(24).fill(0));
+  if (tagIds.length === 0) return series;
+
+  const { results } = await db
+    .prepare(
+      `SELECT tag_id AS tagId, minute / 60 AS hour, SUM(posts) AS posts
+         FROM tag_minute
+        WHERE minute >= ?1
+        GROUP BY tag_id, hour`,
+    )
+    .bind(fromMinute)
+    .all<{ tagId: number; hour: number; posts: number }>();
+
+  for (const row of results ?? []) {
+    const buckets = series.get(row.tagId);
+    if (buckets === undefined) continue;
+    const index = row.hour - (hourNow - 23);
+    if (index >= 0 && index < 24) buckets[index] = row.posts;
+  }
+  return series;
+}

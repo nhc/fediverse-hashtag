@@ -37,6 +37,8 @@ import {
   sweep,
   timeseries,
   trackedForRetirement,
+  hourlyPostsByTag,
+  tagOverview,
 } from './db';
 import {
   DEFAULT_MIN_AUTHORS,
@@ -49,12 +51,14 @@ import { probeOneDueInstance } from './probe';
 import { assignTiers } from './scheduler';
 import {
   coveragePage,
+  explorePage,
   html,
   notFoundPage,
   searchPage,
   statusPage,
   tagPage,
   tagsPage,
+  type ExploreView,
   type TagView,
   type TagsView,
 } from './ui';
@@ -150,6 +154,7 @@ export default {
       // --- Web pages ---
       if (path === '/') return html(searchPage(STATEMENT));
       if (path === '/tags') return await renderTagsPage(env, now, url);
+      if (path === '/explore') return await renderExplorePage(env, now);
 
       if (path === '/tag') {
         const query = url.searchParams.get('q');
@@ -399,6 +404,30 @@ async function runDiscovery(env: Env, now: number): Promise<void> {
   if (promoting.length > 0) {
     console.log(JSON.stringify({ event: 'promote', tags: promoting }));
   }
+}
+
+async function renderExplorePage(env: Env, now: number): Promise<Response> {
+  const overview = await tagOverview(env.DB, now);
+  const hourly = await hourlyPostsByTag(
+    env.DB,
+    now,
+    overview.map((tag) => tag.id),
+  );
+  const view: ExploreView = {
+    statement: STATEMENT,
+    asOf: new Date(now * 1000).toISOString(),
+    tags: overview.map((tag) => ({
+      id: tag.id,
+      name: tag.name,
+      display: tag.display ?? tag.name,
+      tier: tag.tier,
+      posts24h: tag.posts24h,
+      authors24h: tag.authors24h,
+      originServers: tag.originServers24h,
+      hourly: hourly.get(tag.id) ?? new Array<number>(24).fill(0),
+    })),
+  };
+  return html(explorePage(view), 200, 30);
 }
 
 async function renderTagsPage(env: Env, now: number, url: URL): Promise<Response> {

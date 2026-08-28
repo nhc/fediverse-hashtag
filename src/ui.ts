@@ -7,6 +7,18 @@
  * travels on its own.
  */
 
+import {
+  DEFAULT_FRAME,
+  SHOUTING_THRESHOLD,
+  logScale,
+  logTicks,
+  rhythmPath,
+  scatterPoints,
+  stripOrder,
+  thresholdY,
+  type ExploreTag,
+} from './explore';
+
 const STYLE = `
 :root {
   --bg: #fbfaf8; --panel: #ffffff; --ink: #1c1a17; --muted: #6b6559;
@@ -63,6 +75,38 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 ul.limits { padding-left: 1.1rem; font-size: .9rem; color: var(--muted); }
 ul.limits li { margin: .35rem 0; }
 code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .85em; }
+
+.chart { background: var(--panel); border: 1px solid var(--line); border-radius: .6rem; padding: 1rem; }
+.chart svg { display: block; width: 100%; height: auto; }
+.axis { stroke: var(--line); }
+.axis-label { fill: var(--muted); font-size: 11px; }
+.dot { cursor: pointer; transition: opacity .15s; }
+.dot circle { fill: var(--accent); fill-opacity: .55; stroke: var(--accent); stroke-width: 1; }
+.dot.tier-hot circle { fill: var(--warn); stroke: var(--warn); }
+.dot.tier-cold circle { fill-opacity: .3; }
+.dot text { fill: var(--ink); font-size: 11px; pointer-events: none; opacity: 0; }
+.dot:hover text, .dot.active text { opacity: 1; }
+.dot.dim { opacity: .2; }
+.dot.active circle { fill-opacity: .9; stroke-width: 2; }
+.threshold { stroke: var(--thin); stroke-dasharray: 4 4; }
+.threshold-label { fill: var(--thin); font-size: 11px; }
+.legend { display: flex; flex-wrap: wrap; gap: 1rem; font-size: .8rem; color: var(--muted); margin: .5rem 0 0; }
+.legend span::before { content: ""; display: inline-block; width: .7rem; height: .7rem; border-radius: 50%; margin-right: .35rem; vertical-align: -.05rem; background: var(--accent); opacity: .6; }
+.legend .hot::before { background: var(--warn); }
+.legend .cold::before { opacity: .3; }
+.strip { display: grid; grid-template-columns: 9rem minmax(0,1fr) 4rem; gap: 0 .75rem; align-items: center; font-size: .85rem; }
+.strip > div { padding: .3rem 0; border-bottom: 1px solid var(--line); }
+.strip .tag a { text-decoration: none; }
+.strip .tag small { color: var(--muted); margin-left: .35rem; }
+.strip svg { display: block; width: 100%; height: 28px; }
+.strip polyline { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-linejoin: round; }
+.strip .row-hot polyline { stroke: var(--warn); }
+.strip .row-cold polyline { opacity: .5; }
+.strip .peak { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+.strip .row.active > div { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.strip .row.dim { opacity: .35; }
+.strip .hours { grid-column: 2; display: flex; justify-content: space-between; font-size: .7rem; color: var(--muted); border: 0; }
+@media (max-width: 44rem) { .strip { grid-template-columns: 6rem minmax(0,1fr) 3rem; } }
 footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); font-size: .85rem; color: var(--muted); }
 `;
 
@@ -97,6 +141,7 @@ export function layout(title: string, body: string, statement: string): string {
 <nav><div>
   <a href="/">Search</a>
   <a href="/tags">All tags</a>
+  <a href="/explore">Explore</a>
   <a href="/coverage">Coverage and methodology</a>
   <a href="/status">Status</a>
   <a href="/api/v1/meta">API</a>
@@ -616,6 +661,169 @@ ${
 }
 <p class="note">As of ${escapeHtml(view.asOf.slice(0, 19).replace('T', ' '))} UTC.
 Same data as <code>/api/v1/tags</code>.</p>`,
+    view.statement,
+  );
+}
+
+// --- Explore, the two charts ----------------------------------------------------
+
+export interface ExploreView {
+  statement: string;
+  asOf: string;
+  tags: ExploreTag[];
+}
+
+function tierName(tier: string): string {
+  return tier === 'hot' ? 'Hot' : tier === 'warm' ? 'Warm' : 'Cold';
+}
+
+function scatterSvg(tags: readonly ExploreTag[]): string {
+  const frame = DEFAULT_FRAME;
+  const points = scatterPoints(tags, frame);
+  if (points.length === 0) {
+    return '<p class="note">No tag has had an author in the last 24 hours, so there is nothing to place.</p>';
+  }
+
+  const left = frame.pad.left;
+  const right = frame.width - frame.pad.right;
+  const top = frame.pad.top;
+  const bottom = frame.height - frame.pad.bottom;
+  const maxAuthors = Math.max(...points.map((point) => point.tag.authors24h));
+  const maxRatio = Math.max(SHOUTING_THRESHOLD * 2, ...points.map((point) => point.postsPerAuthor));
+
+  const xTicks = logTicks(maxAuthors)
+    .map((value) => {
+      const x = Math.round(logScale(value, 1, maxAuthors, left, right) * 10) / 10;
+      return `<line class="axis" x1="${x}" x2="${x}" y1="${bottom}" y2="${bottom + 4}"/>
+<text class="axis-label" x="${x}" y="${bottom + 16}" text-anchor="middle">${value}</text>`;
+    })
+    .join('\n');
+  const yTicks = logTicks(maxRatio)
+    .map((value) => {
+      const y = Math.round(logScale(value, 1, maxRatio, bottom, top) * 10) / 10;
+      return `<line class="axis" x1="${left - 4}" x2="${left}" y1="${y}" y2="${y}"/>
+<text class="axis-label" x="${left - 8}" y="${y + 4}" text-anchor="end">${value}</text>`;
+    })
+    .join('\n');
+
+  const lineY = thresholdY(tags, frame);
+  const threshold =
+    lineY === null
+      ? ''
+      : `<line class="threshold" x1="${left}" x2="${right}" y1="${lineY}" y2="${lineY}"/>
+<text class="threshold-label" x="${right}" y="${lineY - 5}" text-anchor="end">${SHOUTING_THRESHOLD} posts per author</text>`;
+
+  const dots = points
+    .map(
+      (point) => `<g class="dot tier-${escapeHtml(point.tag.tier)}" data-tag="${escapeHtml(point.tag.name)}">
+  <title>#${escapeHtml(point.tag.display)}: ${formatCount(point.tag.authors24h)} authors, ${formatCount(
+    point.tag.posts24h,
+  )} posts (${point.postsPerAuthor} per author), ${formatCount(point.tag.originServers)} servers, ${tierName(
+    point.tag.tier,
+  ).toLowerCase()}</title>
+  <circle cx="${point.x}" cy="${point.y}" r="${point.r}"/>
+  <text x="${point.x + point.r + 3}" y="${point.y + 4}">#${escapeHtml(point.tag.display)}</text>
+</g>`,
+    )
+    .join('\n');
+
+  return `<svg viewBox="0 0 ${frame.width} ${frame.height}" role="img"
+  aria-label="Tracked tags placed by distinct authors against posts per author">
+<line class="axis" x1="${left}" x2="${right}" y1="${bottom}" y2="${bottom}"/>
+<line class="axis" x1="${left}" x2="${left}" y1="${top}" y2="${bottom}"/>
+${xTicks}
+${yTicks}
+<text class="axis-label" x="${(left + right) / 2}" y="${frame.height - 6}" text-anchor="middle">Distinct authors, 24h (log)</text>
+<text class="axis-label" transform="translate(12 ${(top + bottom) / 2}) rotate(-90)" text-anchor="middle">Posts per author (log)</text>
+${threshold}
+${dots}
+</svg>`;
+}
+
+function rhythmStrip(tags: readonly ExploreTag[]): string {
+  if (tags.length === 0) return '<p class="note">Nothing tracked yet.</p>';
+  const width = 240;
+  const height = 28;
+  const rows = stripOrder(tags)
+    .map((tag) => {
+      const peak = Math.max(...tag.hourly);
+      return `<div class="row row-${escapeHtml(tag.tier)}" data-tag="${escapeHtml(tag.name)}" style="display:contents">
+  <div class="tag"><a href="/tag/${encodeURIComponent(tag.name)}">#${escapeHtml(tag.display)}</a><small>${escapeHtml(
+    tag.tier,
+  )}</small></div>
+  <div><svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img"
+    aria-label="Posts per hour for #${escapeHtml(tag.display)}, peak ${peak}"><polyline points="${rhythmPath(
+      tag.hourly,
+      width,
+      height,
+    )}"/></svg></div>
+  <div class="peak">${peak === 0 ? '<span class="unavailable">quiet</span>' : `${formatCount(peak)}/h`}</div>
+</div>`;
+    })
+    .join('\n');
+
+  return `<div class="strip">
+${rows}
+<div class="hours"><span>24h ago</span><span>12h ago</span><span>now</span></div>
+</div>`;
+}
+
+/**
+ * The only scripting in the interface, and the page works without it. Hovering
+ * or clicking a dot highlights the same tag in the strip and vice versa, so the
+ * two charts read as one.
+ */
+const EXPLORE_SCRIPT = `
+(function () {
+  var items = document.querySelectorAll('[data-tag]');
+  var pinned = null;
+  function apply(name) {
+    items.forEach(function (el) {
+      var match = name !== null && el.getAttribute('data-tag') === name;
+      el.classList.toggle('active', match);
+      el.classList.toggle('dim', name !== null && !match);
+    });
+  }
+  items.forEach(function (el) {
+    var name = el.getAttribute('data-tag');
+    el.addEventListener('mouseenter', function () { if (pinned === null) apply(name); });
+    el.addEventListener('mouseleave', function () { if (pinned === null) apply(null); });
+    el.addEventListener('click', function (event) {
+      if (event.target.closest('a')) return;
+      pinned = pinned === name ? null : name;
+      apply(pinned);
+    });
+  });
+})();
+`;
+
+export function explorePage(view: ExploreView): string {
+  return layout(
+    'Explore',
+    `<h1>Explore</h1>
+<p class="statement">${escapeHtml(view.statement)}</p>
+<p class="note">Two views of the tracked set. The first asks whether a tag is a conversation or
+one person repeating themselves; the second shows the shape of each tag's day. Hover or click a
+tag in either to pick it out in both.</p>
+
+<h2>Conversation or megaphone</h2>
+<p class="note">Right is many people; up is few people posting a lot. The dashed line is where
+posts per author passes ${SHOUTING_THRESHOLD}, above which a count is more likely a handful of
+accounts than a conversation. Dot size is how many different servers the posts came from.</p>
+<div class="chart">${scatterSvg(view.tags)}
+<p class="legend"><span class="hot">Hot tier</span><span>Warm tier</span><span class="cold">Cold tier</span></p>
+</div>
+
+<h2>The shape of the day</h2>
+<p class="note">Posts per hour over the last 24 hours, each tag scaled to its own peak so a
+quiet tag's rhythm is as visible as a busy one's. The figure at the right is that peak. Grouped
+by polling tier, busiest first.</p>
+<div class="chart">${rhythmStrip(view.tags)}</div>
+
+<p class="note">As of ${escapeHtml(view.asOf.slice(0, 19).replace('T', ' '))} UTC. Author and
+post counts exclude boosts. Same data as <code>/api/v1/tags</code> and each tag's
+<code>/timeseries</code>.</p>
+<script>${EXPLORE_SCRIPT}</script>`,
     view.statement,
   );
 }
