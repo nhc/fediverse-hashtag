@@ -65,7 +65,13 @@ share, a view no person could reach without an agent. Replaced with
 `/compare?tags=a,b,c`, a server-rendered page with the same sparklines, a
 form, and a nav link, so the URL is the shared state, as everywhere else on the
 site. The tool sends the person there and returns the same figures. The
-`evaluate` payload is built once for both the API and the page. The
+`evaluate` payload is built once for both the API and the page.
+
+Verified 15:07 UK: "Compare #pottery and #art" took ChatGPT's browser to
+`/compare?tags=Art,pottery`, and the reply said "this isn't a like-for-like
+comparison" and called the server-reported figure "an indication it's in use,
+not a comparable total". Both the callout on the page and the note in the
+result reached the person. The
 lesson for anyone building WebMCP tools: the description is the routing layer,
 and a tool that overlaps another needs to say so in both places.
 
