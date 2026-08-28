@@ -30,7 +30,7 @@ deployment that falls over. Do not plan to use the final day.
 ## Outstanding, kept current
 
 The live to-do list. Update this section rather than the chat. Last updated
-Friday 28 August 2026, 15:55 UK.
+Friday 28 August 2026, 16:10 UK.
 
 **Built and verified:** five tools, live from `build-mvp`, all verified in
 ChatGPT's in-app browser and Chrome 151; `/webmcp` diagnostics; `/compare`
@@ -50,7 +50,8 @@ page; licence; prior/new-work record; repo pushed (private).
       submission; earlier makes the README compare link work for anyone.
 - [ ] Video: 2:30 script from the captured exchanges, record, upload to
       YouTube as Public, no music, no logos in the thumbnail.
-- [ ] Text description under the rules' four headings.
+- [x] Text description drafted in `devpost-submission.md`, with Built-with
+      tags, links and testing instructions. Check figures before pasting.
 - [ ] Screenshots for the form: pottery evaluation, trending, compare page,
       lookup refusal, coverage answer. Most already captured today.
 - [ ] Submit by Wednesday 2 September, 9 pm UK. Confirm status is "submitted".
