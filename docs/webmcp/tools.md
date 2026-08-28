@@ -172,6 +172,15 @@ reading becomes "Not seen by this index, but 2 servers asked directly report
 about 20 accounts using it in the last seven days. Server-reported, not
 observed." Totals are summed across servers without deduplication and say so.
 
+**Re-run after the fallback** (ChatGPT browser, 13:16 UK): the agent
+recommended `#Pottery #Ceramics #WheelThrown #Stoneware #Celadon #MastoArt`,
+gave `#Art` as an optional broad-reach tag with its observed figures (385
+authors, 112 servers), described the niche tags from "the index's
+server-reported seven-day data" by name, and advised skipping
+`#HandmadePottery` because it is tracked but had no recent activity. Every
+distinction the result encodes reached the person. This is the exchange to
+show in the video.
+
 **Asked "which hashtags are trending?"** with no tool for it, the agent
 navigated to `/tags`, read the page, and gave correct figures with the
 monitored-servers caveat intact. No fabrication. So `trending_hashtags` earns
