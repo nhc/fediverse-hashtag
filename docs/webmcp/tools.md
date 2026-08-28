@@ -48,6 +48,22 @@ seen / monitored figures behind it, freshness, and the standing statement.
 > by a handful of heavy posters. Both have good coverage from the same 9
 > monitored servers, so the comparison is fair.
 
+**Status: built, and this is the hero exchange.** In ChatGPT's browser
+(28 Aug 2026, 13:38 UK) the agent chose `compare_hashtags`, a table with
+hourly sparklines appeared at the top of the page beside the chat, and the
+reply opened "Comparison is displayed in the browser" before contrasting 18.7
+posts per author against 1.8. Asked "why have you not used WebMCP?" it
+answered, correctly, that it had.
+
+**What it took.** The first attempt failed silently: the agent picked
+`evaluate_hashtags` for "compare", so nothing rendered. Each description now
+names the other tool for the other job, and `compare_hashtags` leads with the
+verbs a person uses (compare, versus, side by side). The rendered table is also
+kept in `sessionStorage` for ten minutes and redrawn on the next page in the
+tab, with a Remove control, because this agent navigates after it calls. The
+lesson for anyone building WebMCP tools: the description is the routing layer,
+and a tool that overlaps another needs to say so in both places.
+
 **What this adds:** the tool must render the comparison into the current tab,
 not only return numbers. The reply also leans on `posts_per_author`, which the
 site already publishes so readers can tell a conversation from one person
