@@ -6,23 +6,24 @@
  * own JSON API. No judgement lives here that is not already in src/api.ts or
  * src/aggregate.ts, where it is tested. Design and reasoning: docs/webmcp/.
  *
- * Two hosts, two habits. Chrome 149 exposes the API on both navigator and
- * document; the challenge's own sample code uses document.modelContext. Some
- * hosts may attach the object after the page has loaded. So: register on every
- * distinct object found, and look again at DOMContentLoaded and load. Each
- * object is registered at most once.
+ * The native API is navigator.modelContext, and that is what we use wherever
+ * it exists. ChatGPT's in-app browser has no native API and instead injects a
+ * plain object at document.modelContext; the challenge's sample code uses the
+ * same name. That object is used only when the native one is absent, never as
+ * well as it. Some hosts may attach either after the page has loaded, so the
+ * check runs again at DOMContentLoaded and load. Registration happens once.
  */
 
 export const WEBMCP_SCRIPT = `
 (function () {
   if (typeof window === 'undefined') return;
-  var done = [];
+  var registered = false;
 
-  function hosts() {
-    var out = [];
-    try { if (navigator.modelContext) out.push(navigator.modelContext); } catch (e) {}
-    try { if (document.modelContext && out.indexOf(document.modelContext) < 0) out.push(document.modelContext); } catch (e) {}
-    return out;
+  // Native first. The injected document object only when there is no native API.
+  function host() {
+    try { if (navigator.modelContext) return navigator.modelContext; } catch (e) {}
+    try { if (document.modelContext) return document.modelContext; } catch (e) {}
+    return null;
   }
 
   function asText(value) {
@@ -64,16 +65,16 @@ export const WEBMCP_SCRIPT = `
   };
 
   function register() {
-    hosts().forEach(function (host) {
-      if (done.indexOf(host) >= 0 || typeof host.registerTool !== 'function') return;
-      try { host.registerTool(evaluateHashtags); done.push(host); } catch (e) {}
-    });
+    if (registered) return;
+    var h = host();
+    if (!h || typeof h.registerTool !== 'function') return;
+    try { h.registerTool(evaluateHashtags); registered = true; } catch (e) {}
   }
 
   register();
   window.addEventListener('DOMContentLoaded', register);
   window.addEventListener('load', register);
-  window.__webmcpRegistered = function () { return done.length; };
+  window.__webmcpRegistered = function () { return registered ? 1 : 0; };
 })();
 `;
 
@@ -93,6 +94,7 @@ export const WEBMCP_DIAGNOSTIC_SCRIPT = `
   lines.push('document.modelContext: ' + (doc ? 'present' : 'absent') + (nav && doc ? (nav === doc ? ' (same object)' : ' (different object)') : ''));
   var host = nav || doc;
   if (host) {
+    lines.push('using: ' + (nav ? 'navigator.modelContext (native)' : 'document.modelContext (injected by the host; no native API here)'));
     var names = [];
     try { var p = Object.getPrototypeOf(host); names = Object.getOwnPropertyNames(p).filter(function (n) { return n !== 'constructor'; }); } catch (e) {}
     lines.push('methods: ' + (names.join(', ') || 'unknown'));
