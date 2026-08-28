@@ -169,6 +169,12 @@ route and the script tag.
   and returns the result envelope serialised as a string. Verified live:
   `evaluate_hashtags` ran in-browser against the deployed API and returned
   correct standings with `queries_registered: 0`.
+- **ChatGPT desktop in-app browser** (28 Aug 2026, Chrome/151 engine): exposes
+  **only `document.modelContext`**, a plain object injected by the app rather
+  than a native interface, and reported "no WebMCP tools" while we registered
+  on `navigator` alone. Registering on both fixed it; `/webmcp` now shows
+  `tools registered: 1 (evaluate_hashtags)` there. Anyone building for the
+  challenge should register on both objects.
 - Is one in-page tool enough, or does `lookup_hashtag` also navigate the tab to
   `/tag/:name`? Leaning yes: cheap, and it keeps the person and agent aligned.
 
