@@ -24,8 +24,10 @@ export const WEBMCP_SCRIPT = `
       'candidates (read the draft and propose them yourself; the index stores no ' +
       'post content and cannot judge fit). For each one it returns how many ' +
       'distinct accounts used it in 24 hours, how many servers it reaches, and ' +
-      'posts_per_author, so you can tell a conversation from a few accounts ' +
-      'posting a lot. standing is tracked, discovered or unseen; read ' +
+      'authors_per_server, which is how you tell a conversation from a publisher: ' +
+      'above about 5 the accounts are concentrated in one place. posts_per_author ' +
+      'is also given but is context only, because a busy genuine tag climbs on it ' +
+      'too. standing is tracked, discovered or unseen; read ' +
       'standing_note before quoting a figure, and treat unseen as no evidence, ' +
       'not as unused. Registers nothing and has no side effects. Up to 10 tags.',
     inputSchema: {

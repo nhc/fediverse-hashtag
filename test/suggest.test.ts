@@ -92,6 +92,8 @@ describe('evaluateCandidates', () => {
     );
     expect(loud?.posts_per_author).toBe(30);
     expect(loud?.reading).toContain('a few accounts posting a lot');
+    // Few accounts is load-bearing here: the same ratio on a large tag is not
+    // evidence of anything. See the #news case below.
     expect(loud?.reading).toContain('on one server');
   });
 
@@ -118,5 +120,56 @@ describe('evaluateCandidates', () => {
     );
     expect(d?.authors_1h).toBeNull();
     expect(d?.posts_24h).toBeNull();
+  });
+});
+
+describe('the two shapes of megaphone', () => {
+  it('does not call a busy genuine tag a few accounts, whatever its ratio', () => {
+    // #news: 14.3 posts per author, which the first version of this read as a
+    // handful of accounts. 384 accounts across 99 servers says otherwise.
+    const [news] = evaluateCandidates(
+      [{ tag: 'news', display: 'news' }],
+      [tracked({ name: 'news', postsObserved: 5334, authorsObserved: 384, originServers: 99 })],
+      [],
+    );
+    expect(news?.posts_per_author).toBeCloseTo(13.9, 1);
+    expect(news?.authors_per_server).toBeCloseTo(3.9, 1);
+    expect(news?.reading).toContain('many different accounts');
+    expect(news?.reading).not.toContain('a few accounts');
+    expect(news?.reading).not.toContain('publisher');
+  });
+
+  it('calls out a publisher: many accounts concentrated on few servers', () => {
+    // #headlines: 67 accounts on 4 servers. Ratio per author is unremarkable.
+    const [headlines] = evaluateCandidates(
+      [{ tag: 'headlines', display: 'headlines' }],
+      [tracked({ name: 'headlines', postsObserved: 1273, authorsObserved: 67, originServers: 4 })],
+      [],
+    );
+    expect(headlines?.authors_per_server).toBeCloseTo(16.8, 1);
+    expect(headlines?.reading).toContain('publisher');
+  });
+
+  it('calls out a small group shouting, which the server ratio cannot see', () => {
+    // 3 accounts, 90 posts, 1 server. Only 3.0 accounts per server, so the
+    // publisher test passes it; the author ceiling plus the ratio catches it.
+    const [shout] = evaluateCandidates(
+      [{ tag: 'shout', display: 'shout' }],
+      [tracked({ name: 'shout', postsObserved: 90, authorsObserved: 3, originServers: 1 })],
+      [],
+    );
+    expect(shout?.authors_per_server).toBe(3);
+    expect(shout?.reading).toContain('a few accounts posting a lot');
+  });
+
+  it('leaves a small quiet community alone', () => {
+    // #buddhism: 7 accounts, 3 servers, 3 posts each. Neither test should fire.
+    const [buddhism] = evaluateCandidates(
+      [{ tag: 'buddhism', display: 'buddhism' }],
+      [tracked({ name: 'buddhism', postsObserved: 21, authorsObserved: 7, originServers: 3 })],
+      [],
+    );
+    expect(buddhism?.reading).toContain('many different accounts');
+    expect(buddhism?.reading).not.toContain('publisher');
   });
 });
