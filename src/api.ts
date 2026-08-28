@@ -58,6 +58,7 @@ import {
   summariseServerReports,
   unseenReading,
 } from './suggest';
+import { DEFAULT_TRENDING, rankTrending } from './trending';
 import { isCollectable, isMonitored } from './registry';
 import { TIER_INTERVAL_SECONDS, type Env } from './types';
 
@@ -651,6 +652,78 @@ export async function evaluateResponse(env: Env, rawTags: string | null, now: nu
       last_successful_update: lastOk === null ? null : new Date(lastOk * 1000).toISOString(),
       tracked_tags: overview.length,
       discovery_window_hours: 48,
+    },
+  });
+}
+
+/**
+ * What is rising among the tags the index watches, for agents asked "what's
+ * trending". Reads the tracked set, registers nothing.
+ *
+ * Each entry carries a direction over the last hour against the hour before,
+ * which is 'not_comparable' when the two hours were reported by different
+ * shares of the monitored servers. Two recent public posts per tag are
+ * included as receipts, because "trending" without a link to what is actually
+ * being posted is a number to take on trust.
+ *
+ * GET /api/v1/trending?limit=5
+ */
+export async function trendingResponse(env: Env, rawLimit: string | null, now: number): Promise<Response> {
+  const parsed = Number.parseInt(rawLimit ?? '', 10);
+  const limit = Number.isFinite(parsed) ? parsed : DEFAULT_TRENDING;
+
+  const [overview, instances, currentReporting, previousReporting] = await Promise.all([
+    tagOverview(env.DB, now),
+    loadInstances(env.DB),
+    instancesReporting(env.DB, now - 3600, now),
+    instancesReporting(env.DB, now - 7200, now - 3600),
+  ]);
+  const monitored = instances.filter(isMonitored);
+  const comparable = isCoverageComparable({
+    instancesMonitored: monitored.length,
+    currentReporting,
+    previousReporting,
+  });
+
+  const ranked = rankTrending(overview, comparable, limit);
+  const byName = new Map(overview.map((t) => [t.name, t.id]));
+  const withPosts = await Promise.all(
+    ranked.map(async (entry) => {
+      const id = byName.get(entry.tag);
+      const posts = id === undefined ? [] : await representativePosts(env.DB, id, now - 3600, 2);
+      return {
+        ...entry,
+        recent_posts: posts.map((post) => ({
+          url: post.url,
+          origin_server: post.originHost,
+          created_at: new Date(post.createdAt * 1000).toISOString(),
+        })),
+      };
+    }),
+  );
+
+  return json({
+    as_of: new Date(now * 1000).toISOString(),
+    completeness: 'partial',
+    statement: STATEMENT,
+    scope:
+      `Ranked among the ${overview.length} hashtags this index is currently tracking. ` +
+      'It is not a trending list for the fediverse; no such list can exist.',
+    ranking_note:
+      'Ranked by distinct authors in the last hour, not by post count or growth, ' +
+      'so a tag one account is posting repeatedly does not float to the top and a ' +
+      'rise from two authors to four is not called a trend.',
+    side_effects: { queries_registered: 0 },
+    trending: withPosts,
+    provenance: {
+      instances_monitored: monitored.length,
+      instances_healthy: monitored.filter((instance) => isCollectable(instance, now)).length,
+      instances_reporting_last_hour: currentReporting,
+      instances_reporting_previous_hour: previousReporting,
+      hours_comparable: comparable,
+      last_successful_update: await lastSuccessfulUpdate(env, instances).then((t) =>
+        t === null ? null : new Date(t * 1000).toISOString(),
+      ),
     },
   });
 }

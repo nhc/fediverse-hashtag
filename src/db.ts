@@ -708,6 +708,8 @@ export interface TagOverview {
   authors24h: number;
   posts1h: number;
   authors1h: number;
+  /** The hour before the last one, so the two can be compared honestly. */
+  authorsPrev1h: number;
   originServers24h: number;
 }
 
@@ -735,7 +737,9 @@ export async function tagOverview(db: D1Database, now: number): Promise<TagOverv
               COUNT(DISTINCT o.origin_host)                                 AS origins24,
               COUNT(CASE WHEN o.created_at >= ?2 THEN 1 END)                AS posts1h,
               COUNT(DISTINCT CASE WHEN o.created_at >= ?2
-                                  THEN o.author_hash END)                   AS authors1h
+                                  THEN o.author_hash END)                   AS authors1h,
+              COUNT(DISTINCT CASE WHEN o.created_at >= ?3 AND o.created_at < ?2
+                                  THEN o.author_hash END)                   AS authorsPrev1h
          FROM tag t
          LEFT JOIN observation o
                 ON o.tag_id = t.id AND o.is_boost = 0 AND o.created_at >= ?1
@@ -743,7 +747,7 @@ export async function tagOverview(db: D1Database, now: number): Promise<TagOverv
         GROUP BY t.id
         ORDER BY t.name`,
     )
-    .bind(dayAgo, hourAgo)
+    .bind(dayAgo, hourAgo, hourAgo - 3600)
     .all<{
       id: number;
       name: string;
@@ -756,6 +760,7 @@ export async function tagOverview(db: D1Database, now: number): Promise<TagOverv
       origins24: number;
       posts1h: number;
       authors1h: number;
+      authorsPrev1h: number;
     }>();
 
   return (results ?? []).map((row) => ({
@@ -769,6 +774,7 @@ export async function tagOverview(db: D1Database, now: number): Promise<TagOverv
     authors24h: row.authors24,
     posts1h: row.posts1h,
     authors1h: row.authors1h,
+    authorsPrev1h: row.authorsPrev1h,
     originServers24h: row.origins24,
   }));
 }

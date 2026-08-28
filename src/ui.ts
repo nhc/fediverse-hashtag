@@ -967,6 +967,9 @@ The design, and why the tools look the way they do, is in the repository under
 <ul>
   <li><code>evaluate_hashtags</code>: check up to ten hashtags you are thinking of
   using against what the index has observed. Read-only; registers nothing.</li>
+  <li><code>trending_hashtags</code>: the busiest tracked tags in the last hour,
+  ranked by distinct authors, each with a trend that says when it cannot be
+  compared. Read-only.</li>
 </ul>
 <p class="note">Try asking your agent, on any page of this site: “I’m writing a
 post, which hashtags fit it best?” followed by the draft.</p>

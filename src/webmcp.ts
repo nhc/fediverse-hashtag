@@ -64,17 +64,45 @@ export const WEBMCP_SCRIPT = `
     }
   };
 
+  var trendingHashtags = {
+    name: 'trending_hashtags',
+    description:
+      'Which hashtags are busiest right now among the ones this index is ' +
+      'tracking, ranked by distinct authors in the last hour. Each entry has a ' +
+      'trend direction against the previous hour that can be not_comparable ' +
+      '(coverage shifted, so do not call it up or down) or insufficient (too few ' +
+      'authors), plus two recent public posts as evidence. Read scope first: this ' +
+      'is a ranking within about 50 tracked tags on a handful of monitored ' +
+      'servers, not a fediverse-wide trending list. Read-only, no side effects.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        limit: { type: 'integer', minimum: 1, maximum: 10, default: 5,
+                 description: 'How many tags to return.' }
+      }
+    },
+    async execute(args) {
+      if (typeof args === 'string') { try { args = JSON.parse(args); } catch (e) { args = {}; } }
+      var limit = args && args.limit ? Number(args.limit) : 5;
+      var res = await fetch('/api/v1/trending?limit=' + encodeURIComponent(String(limit)),
+        { headers: { 'x-webmcp-tool': 'trending_hashtags' } });
+      return asText(await res.json());
+    }
+  };
+
+  var tools = [evaluateHashtags, trendingHashtags];
+
   function register() {
     if (registered) return;
     var h = host();
     if (!h || typeof h.registerTool !== 'function') return;
-    try { h.registerTool(evaluateHashtags); registered = true; } catch (e) {}
+    try { tools.forEach(function (t) { h.registerTool(t); }); registered = true; } catch (e) {}
   }
 
   register();
   window.addEventListener('DOMContentLoaded', register);
   window.addEventListener('load', register);
-  window.__webmcpRegistered = function () { return registered ? 1 : 0; };
+  window.__webmcpRegistered = function () { return registered ? tools.length : 0; };
 })();
 `;
 

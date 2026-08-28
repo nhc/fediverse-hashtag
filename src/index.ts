@@ -21,6 +21,7 @@ import {
   tagsResponse,
   timeseriesResponse,
   evaluateResponse,
+  trendingResponse,
 } from './api';
 import { collectTick, configFromEnv } from './collect';
 import {
@@ -142,6 +143,9 @@ export default {
       if (path === '/api/v1/meta') return await metaResponse(env, now);
       if (path === '/api/v1/tags') {
         return await tagsResponse(env, now, parseOrder(url.searchParams.get('order')));
+      }
+      if (path === '/api/v1/trending') {
+        return await trendingResponse(env, url.searchParams.get('limit'), now);
       }
       if (path === '/api/v1/evaluate') {
         return await evaluateResponse(env, url.searchParams.get('tags'), now);
