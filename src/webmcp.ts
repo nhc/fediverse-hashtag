@@ -6,12 +6,12 @@
  * own JSON API. No judgement lives here that is not already in src/api.ts or
  * src/aggregate.ts, where it is tested. Design and reasoning: docs/webmcp/.
  *
- * The native API is navigator.modelContext, and that is what we use wherever
- * it exists. ChatGPT's in-app browser has no native API and instead injects a
- * plain object at document.modelContext; the challenge's sample code uses the
- * same name. That object is used only when the native one is absent, never as
- * well as it. Some hosts may attach either after the page has loaded, so the
- * check runs again at DOMContentLoaded and load. Registration happens once.
+ * The API is document.modelContext. Chrome 151 warns that navigator.modelContext
+ * is deprecated in its favour, and ChatGPT's in-app browser provides only the
+ * document form. navigator is kept as a fallback for hosts that have not
+ * moved, and is never used as well as document. Some hosts may attach either
+ * after the page has loaded, so the check runs again at DOMContentLoaded and
+ * load. Registration happens once.
  */
 
 export const WEBMCP_SCRIPT = `
@@ -19,10 +19,10 @@ export const WEBMCP_SCRIPT = `
   if (typeof window === 'undefined') return;
   var registered = false;
 
-  // Native first. The injected document object only when there is no native API.
+  // document.modelContext is the current API; navigator is the deprecated one.
   function host() {
-    try { if (navigator.modelContext) return navigator.modelContext; } catch (e) {}
     try { if (document.modelContext) return document.modelContext; } catch (e) {}
+    try { if (navigator.modelContext) return navigator.modelContext; } catch (e) {}
     return null;
   }
 
@@ -303,9 +303,9 @@ export const WEBMCP_DIAGNOSTIC_SCRIPT = `
   try { doc = document.modelContext || null; } catch (e) {}
   lines.push('navigator.modelContext: ' + (nav ? 'present' : 'absent'));
   lines.push('document.modelContext: ' + (doc ? 'present' : 'absent') + (nav && doc ? (nav === doc ? ' (same object)' : ' (different object)') : ''));
-  var host = nav || doc;
+  var host = doc || nav;
   if (host) {
-    lines.push('using: ' + (nav ? 'navigator.modelContext (native)' : 'document.modelContext (injected by the host; no native API here)'));
+    lines.push('using: ' + (doc ? 'document.modelContext' : 'navigator.modelContext (deprecated; document.modelContext absent here)'));
     var names = [];
     try { var p = Object.getPrototypeOf(host); names = Object.getOwnPropertyNames(p).filter(function (n) { return n !== 'constructor'; }); } catch (e) {}
     lines.push('methods: ' + (names.join(', ') || 'unknown'));

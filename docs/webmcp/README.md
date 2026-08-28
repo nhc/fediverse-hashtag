@@ -172,11 +172,14 @@ route and the script tag.
   `evaluate_hashtags` ran in-browser against the deployed API and returned
   correct standings with `queries_registered: 0`.
 - **ChatGPT desktop in-app browser** (28 Aug 2026, Chrome/151 engine): exposes
-  **only `document.modelContext`**, a plain object injected by the app rather
-  than a native interface, and reported "no WebMCP tools" while we registered
-  on `navigator` alone. Registering on both fixed it; `/webmcp` now shows
-  `tools registered: 1 (evaluate_hashtags)` there. Anyone building for the
-  challenge should register on both objects.
+  **only `document.modelContext`** and reported "no WebMCP tools" while we
+  registered on `navigator` alone.
+- **Correction, 15:15 UK.** Chrome 151's console says `navigator.modelContext
+  is deprecated. Please use document.modelContext instead.` So `document` is
+  the current API, not a host-specific injection as first assumed, and the
+  challenge sample code was right. We now register on `document.modelContext`
+  and fall back to `navigator` only where `document` is absent. Anyone building
+  for the challenge should use `document.modelContext`.
 - Is one in-page tool enough, or does `lookup_hashtag` also navigate the tab to
   `/tag/:name`? Leaning yes: cheap, and it keeps the person and agent aligned.
 
