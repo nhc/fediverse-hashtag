@@ -78,6 +78,8 @@ Two consequences for the design:
 
 - `lookup_hashtag` results say plainly whether the lookup caused the tag to be
   tracked, so the agent (and person) know the call had a side effect.
+- Anything that evaluates many tags at once (`evaluate_hashtags`) goes through
+  a separate read-only endpoint, `/api/v1/evaluate`, that registers nothing.
 - The tool description tells the agent that a lookup is a request to watch the
   tag, and that browsing should use `trending_hashtags` (which reads the
   already-tracked set and registers nothing). Whether we also rate-limit or
@@ -86,7 +88,7 @@ Two consequences for the design:
 ### Why four tools and not one per endpoint
 
 We wrote down five things a person would plausibly *say* to an agent while on
-the site, and asked what each one needed. Five utterances resolved to four
+the site, and asked what each one needed. Six utterances resolved to five
 tools. `/api/v1/instances` and `/api/v1/meta` did not come up in any of them,
 so they are not tools; fewer, better-described tools help the agent choose
 correctly. If an utterance turns up that needs them, they can be added.
@@ -119,6 +121,10 @@ Working backwards from use, in this order:
 5. **The in-page tool second**, `compare_hashtags`, because it is the one that
    demonstrates shared page state and earns the "human-agent experience" score.
 6. **Then `trending_hashtags` and `describe_coverage`.**
+
+   `evaluate_hashtags` was built first in practice, out of order, because it
+   was the utterance that arrived with the clearest need and it forced the
+   read-only endpoint pattern the others can reuse.
 7. **Record the video around the five utterances.** The refusal must be in it.
 
 Each step is a commit on the `webmcp` branch, worktree at

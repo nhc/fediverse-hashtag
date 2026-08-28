@@ -36,6 +36,7 @@ import {
   representativePosts,
   timeseries,
   windowCounts,
+  candidateStats,
 } from './db';
 import {
   DEFAULT_MAX_AUTHORS_PER_SERVER,
@@ -50,6 +51,7 @@ import {
 } from './discovery';
 import { ensureTagHistory } from './history';
 import { casefoldTag } from './normalise';
+import { evaluateCandidates, MAX_CANDIDATES, normaliseCandidates } from './suggest';
 import { isCollectable, isMonitored } from './registry';
 import { TIER_INTERVAL_SECONDS, type Env } from './types';
 
@@ -567,4 +569,66 @@ async function lastSuccessfulUpdate(
     if (latest === null || instance.last_ok_at > latest) latest = instance.last_ok_at;
   }
   return latest;
+}
+
+/**
+ * Evaluate hashtags somebody is thinking of using, without registering any of
+ * them as a query.
+ *
+ * Built for browser agents helping a person write a post. The agent reads the
+ * draft and proposes candidates; this endpoint says what the index has seen of
+ * each. It deliberately does not go through buildTagData, because a lookup is a
+ * request to watch a tag and ten candidates would be ten requests, which is how
+ * the tracked-set ceiling gets walked past by a helpful robot.
+ *
+ * GET /api/v1/evaluate?tags=cats,dogs,caturday
+ */
+export async function evaluateResponse(env: Env, rawTags: string | null, now: number): Promise<Response> {
+  const candidates = normaliseCandidates((rawTags ?? '').split(','), casefoldTag);
+  if (candidates.length === 0) {
+    return json({ error: `give up to ${MAX_CANDIDATES} hashtags as ?tags=a,b,c` }, 400);
+  }
+
+  const [overview, instances] = await Promise.all([tagOverview(env.DB, now), loadInstances(env.DB)]);
+  const trackedNames = new Set(overview.map((t) => t.name));
+  const untracked = candidates.filter((c) => !trackedNames.has(c.tag)).map((c) => c.tag);
+  const [discovered, lastOk] = await Promise.all([
+    candidateStats(env.DB, untracked, now - 48 * 3600),
+    lastSuccessfulUpdate(env, instances),
+  ]);
+
+  const monitored = instances.filter(isMonitored);
+  const evaluated = evaluateCandidates(
+    candidates,
+    overview.map((t) => ({
+      name: t.name,
+      display: t.display,
+      postsObserved: t.posts24h,
+      authorsObserved: t.authors24h,
+      originServers: t.originServers24h,
+      posts1h: t.posts1h,
+      authors1h: t.authors1h,
+    })),
+    discovered,
+  );
+
+  return json({
+    as_of: new Date(now * 1000).toISOString(),
+    completeness: 'partial',
+    statement: STATEMENT,
+    note:
+      'Ranked by distinct accounts using each tag, then by how many servers it ' +
+      'reaches. This is evidence of who is already in a conversation, not a ' +
+      'judgement of fit: the index stores no post content and cannot read yours. ' +
+      'An unseen tag may be in wide use on servers this index does not monitor.',
+    side_effects: { queries_registered: 0 },
+    candidates: evaluated,
+    provenance: {
+      instances_monitored: monitored.length,
+      instances_healthy: monitored.filter((instance) => isCollectable(instance, now)).length,
+      last_successful_update: lastOk === null ? null : new Date(lastOk * 1000).toISOString(),
+      tracked_tags: overview.length,
+      discovery_window_hours: 48,
+    },
+  });
 }

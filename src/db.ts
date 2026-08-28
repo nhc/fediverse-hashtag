@@ -1195,3 +1195,46 @@ export async function hourlyPostsByTag(
   }
   return series;
 }
+
+/**
+ * Sightings for a named set of candidate tags, for evaluating hashtags somebody
+ * is thinking of using. Read-only: nothing here registers a query.
+ *
+ * Same aggregates as loadCandidates, but keyed by name rather than ranked, so a
+ * candidate outside the top of the pool is still found. Tracked tags are not
+ * excluded here; the caller prefers observation figures for those and only
+ * falls back to sightings for the rest.
+ */
+export async function candidateStats(
+  db: D1Database,
+  names: readonly string[],
+  since: number,
+): Promise<
+  { name: string; distinctAuthors: number; distinctOriginServers: number; postsPerAuthor: number | null }[]
+> {
+  if (names.length === 0) return [];
+  const placeholders = names.map((_, i) => `?${i + 2}`).join(', ');
+  const { results } = await db
+    .prepare(
+      `SELECT c.name                        AS name,
+              COUNT(*)                      AS authors,
+              COUNT(DISTINCT c.origin_host) AS servers,
+              SUM(c.posts_seen)             AS sightings
+         FROM tag_candidate c
+        WHERE c.first_seen >= ?1
+          AND c.name IN (${placeholders})
+        GROUP BY c.name`,
+    )
+    .bind(since, ...names)
+    .all<{ name: string; authors: number; servers: number; sightings: number | null }>();
+
+  return (results ?? []).map((row) => ({
+    name: row.name,
+    distinctAuthors: row.authors,
+    distinctOriginServers: row.servers,
+    postsPerAuthor:
+      row.sightings === null || row.authors === 0 || row.sightings <= row.authors
+        ? null
+        : Math.round((row.sightings / row.authors) * 10) / 10,
+  }));
+}
