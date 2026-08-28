@@ -18,7 +18,7 @@ import {
   thresholdY,
   type ExploreTag,
 } from './explore';
-import { WEBMCP_SCRIPT } from './webmcp';
+import { WEBMCP_DIAGNOSTIC_SCRIPT, WEBMCP_SCRIPT } from './webmcp';
 
 const STYLE = `
 :root {
@@ -951,5 +951,26 @@ post counts exclude boosts. Same data as <code>/api/v1/tags</code> and each tag'
 <code>/timeseries</code>.</p>
 <script>${EXPLORE_SCRIPT}</script>`,
     view.statement,
+  );
+}
+
+/** What this browser exposes for WebMCP, readable without developer tools. */
+export function webmcpPage(statement: string): string {
+  return layout(
+    'WebMCP',
+    `<h1>WebMCP on this site</h1>
+<p>This site registers tools that an agent running in your browser can call.
+The design, and why the tools look the way they do, is in the repository under
+<code>docs/webmcp/</code>. This page reports what your browser exposes.</p>
+<pre id="webmcp-report">Checking…</pre>
+<h2>Tools</h2>
+<ul>
+  <li><code>evaluate_hashtags</code>: check up to ten hashtags you are thinking of
+  using against what the index has observed. Read-only; registers nothing.</li>
+</ul>
+<p class="note">Try asking your agent, on any page of this site: “I’m writing a
+post, which hashtags fit it best?” followed by the draft.</p>
+<script>${WEBMCP_DIAGNOSTIC_SCRIPT}</script>`,
+    statement,
   );
 }

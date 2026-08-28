@@ -61,6 +61,7 @@ import {
   statusPage,
   tagPage,
   tagsPage,
+  webmcpPage,
   type ExploreView,
   type TagView,
   type TagsView,
@@ -176,6 +177,8 @@ export default {
 
       if (path === '/coverage' || path === '/methodology') return await renderCoveragePage(env, now);
       if (path === '/status') return await renderStatusPage(env, now);
+
+      if (path === '/webmcp') return html(webmcpPage(STATEMENT));
 
       if (path === '/robots.txt') {
         return new Response('User-agent: *\nAllow: /\n', {
