@@ -208,8 +208,19 @@ wrong answer, which moved it down the build order.
 All five tools are built, deployed from `build-mvp`, and registered on every
 page. `evaluate_hashtags`, `trending_hashtags` and `compare_hashtags` are
 verified end to end in both judging browsers (see the notes under each
-utterance). `lookup_hashtag` and `describe_coverage` are deployed and awaiting
-the same browser verification.
+utterance). `lookup_hashtag` is verified in ChatGPT's browser on both branches (28 Aug,
+14:55 UK): "Tell me about #photography" produced the figures across all three
+windows, "the 24-hour trend can't be compared reliably because prior coverage
+differed", "only a partial view of the fediverse", and "the lookup also
+confirmed #photography is already tracked and took you to its tag page".
+"Tell me about #obscurewheelthrowing" produced the refusal: not collected
+because the index is at its 50-tag limit, the lookup recorded it and queued
+it, the two servers' counters show zero, "but that's not evidence the tag is
+unused across the fediverse". `describe_coverage` awaits the same check.
+
+Noted for later, outside WebMCP: the tag page's Coverage panel grades a tag
+with zero observations as "thin", in red. Nothing observed is not thin
+coverage; it should say so instead.
 
 ## `lookup_hashtag`
 
