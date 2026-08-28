@@ -30,18 +30,18 @@ deployment that falls over. Do not plan to use the final day.
 ## Outstanding, kept current
 
 The live to-do list. Update this section rather than the chat. Last updated
-Friday 28 August 2026, 15:35 UK.
+Friday 28 August 2026, 15:55 UK.
 
 **Built and verified:** five tools, live from `build-mvp`, all verified in
 ChatGPT's in-app browser and Chrome 151; `/webmcp` diagnostics; `/compare`
 page; licence; prior/new-work record; repo pushed (private).
 
-**Browser checks still open**
+**Browser checks: all done**
 - [x] ChatGPT browser: after the `document.modelContext` change, "what webmcp
       tools can I access here" lists five, with the side effect on
       `lookup_hashtag` called out (28 Aug, 15:32 UK).
-- [ ] Safari or Firefox: home page console empty; `/webmcp` says no model
-      context; `/compare?tags=news,art` renders.
+- [x] Firefox 152: `/webmcp` reports no model context, page renders normally,
+      script exits silently (28 Aug, 15:50 UK). Safari not checked, by choice.
 
 **Entry logistics still open (Neil)**
 - [ ] Register on Devpost and save a draft submission. Note any form fields
