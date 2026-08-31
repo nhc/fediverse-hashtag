@@ -61,8 +61,10 @@ page; licence; prior/new-work record; repo pushed (private).
       (19:29, blocked on principle plus 1,371 server-reported accounts).
       The hobby draft landed 19:31 (urban sketching: five proposed
       candidates, server-reported counts quoted, "an indication of activity,
-      not a fediverse-wide count"). Still wanted: too-few-authors refusal,
-      like-for-like compare, trust follow-up, tools-on-a-tag-page.
+      not a fediverse-wide count"). The too-few-authors refusal landed 19:33 (one author in each of
+      the last two comparable hours; may_say quoted verbatim), completing the
+      set of three distinct refusal reasons. Still wanted: like-for-like
+      compare, trust follow-up, tools-on-a-tag-page.
 - [ ] Submit by Wednesday 2 September, 9 pm UK. Confirm status is "submitted".
 
 **Raising the score (agreed 31 Aug)**
