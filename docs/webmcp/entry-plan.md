@@ -56,9 +56,11 @@ page; licence; prior/new-work record; repo pushed (private).
       compare page (mixed and approved), lookup happy path and refusal,
       coverage answer, check_claim referee, and the combined
       trending-plus-scope shot (31 Aug, 19:03 UK, the strongest single
-      capture). Still wanted: too-few-authors refusal, caturday unused
-      punchline, hobby draft, like-for-like compare, trust follow-up,
-      tools-on-a-tag-page.
+      capture). Also captured 31 Aug evening: a crisper trending-plus-scope
+      retake (19:27, prefer this one) and the caturday unused punchline
+      (19:29, blocked on principle plus 1,371 server-reported accounts).
+      Still wanted: too-few-authors refusal, hobby draft, like-for-like
+      compare, trust follow-up, tools-on-a-tag-page.
 - [ ] Submit by Wednesday 2 September, 9 pm UK. Confirm status is "submitted".
 
 **Raising the score (agreed 31 Aug)**
