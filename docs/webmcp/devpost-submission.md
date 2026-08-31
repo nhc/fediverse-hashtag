@@ -40,9 +40,13 @@ drop on the way to the person.
 
 ## Why this use case is a strong fit for WebMCP
 
-WebMCP lets a page offer structured tools instead of leaving an agent to
-interpret the HTML. For most sites that saves the agent some clicking. For this
-one it changes what the agent can honestly say. A tool result that carries
+Ask an agent "how busy is #news on the fediverse?" and, without tools, it will
+read a page, find a number, and repeat it, shorn of the coverage, freshness and
+comparability that made it safe to publish. The site cannot stop that; the
+caveats are prose, and prose gets summarised away. That is the specific failure
+WebMCP fixes here, and it is why this site fits the protocol better than most:
+the tools do not just save the agent some clicking, they change what it can
+honestly say. A tool result that carries
 `provenance` as a required field, a `standing` that separates observed data
 from sightings from the servers' own counters, and a `status` that can be
 `insufficient_data` with a reason, gives the agent something a screen-read
@@ -132,14 +136,13 @@ candidate in a niche post was honest and useless. Asking the servers themselves
 turned it into an answer, without giving up the distinction between observed
 and reported figures.
 
-## Prior work and work during the Submission Period
+## When this was built
 
-The index, its API, pages, collector and tests existed before 25 August 2026.
-Everything under `docs/webmcp/`, `src/webmcp.ts`, `src/suggest.ts`,
-`src/trending.ts`, the two new endpoints and the compare page were built during
-the Submission Period. The commit record and dates are in
-`docs/webmcp/README.md`, and the full diff is the repository's
-`build-mvp...webmcp` compare view.
+Everything here was built during the Submission Period. The repository's first
+commit is 27 August 2026: the index, collector, API and pages went up on the
+27th, and all of the WebMCP work followed from the 28th, in individually dated
+commits. The WebMCP-specific files are `src/webmcp.ts`, `src/suggest.ts`,
+`src/trending.ts` and the design record in `docs/webmcp/`.
 
 ---
 

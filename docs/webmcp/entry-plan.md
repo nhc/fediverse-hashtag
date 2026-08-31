@@ -30,7 +30,7 @@ deployment that falls over. Do not plan to use the final day.
 ## Outstanding, kept current
 
 The live to-do list. Update this section rather than the chat. Last updated
-Friday 28 August 2026, 16:10 UK.
+Monday 31 August 2026, 18:45 UK.
 
 **Built and verified:** five tools, live from `build-mvp`, all verified in
 ChatGPT's in-app browser and Chrome 151; `/webmcp` diagnostics; `/compare`
@@ -111,17 +111,13 @@ Ordered by how long each takes to fix. Do them in this order.
       cover three weeks of cron plus judge traffic. Set a calendar reminder
       to check the site on 4, 10 and 17 September.
 
-### 4. Prior work vs new work documentation — 1 hour
-The project existed before 25 August, so it is judged **only on WebMCP
-work added after 25 August 2026, 11 am PT**. The rules require "clear
-documentation distinguishing prior work from new work" with timestamped
-evidence.
-- [ ] Add a section to `docs/webmcp/README.md` headed "Prior work and work
-      during the Submission Period": one paragraph on what existed (the
-      index, API, pages, collector) and a list of the WebMCP commits with
-      dates and hashes. Link the GitHub compare view
-      `build-mvp...webmcp` so a judge can see the diff in one click.
-- [ ] Say the same thing in the Devpost text description, briefly.
+### 4. Prior work vs new work documentation — RESOLVED, simpler than assumed
+The git history shows the first commit is 27 August 2026, two days into the
+Submission Period, so the whole project qualifies as newly created during the
+Hackathon and the pre-existing-project rule does not apply. The dated commit
+log is still the evidence, and `docs/webmcp/README.md` records it under
+"When this was built, with evidence". Earlier drafts wrongly said the project
+predated 25 August; corrected on 31 August.
 
 ### 5. Demo video — half a day — not started
 - [ ] Under three minutes. Aim for 2:30 so trimming is not needed.

@@ -130,32 +130,27 @@ Working backwards from use, in this order:
 Each step is a commit on the `webmcp` branch, worktree at
 `../fediverse-hashtag-webmcp`, off `build-mvp`.
 
-## Prior work and work during the Submission Period
+## When this was built, with evidence
 
-This project existed before the challenge opened on 25 August 2026. Under the
-rules it is judged only on WebMCP work added after that date, so the line is
-drawn here.
+The challenge's Submission Period opened on 25 August 2026. This repository's
+first commit is 17:01 UK on 27 August, so the entire project, index and all,
+was built inside the Submission Period; nothing here predates it. The rules'
+requirement to separate prior work from new work therefore does not apply,
+but the same evidence is kept anyway, because provenance is this project's
+whole argument:
 
-**Prior work** (all commits before 25 August 2026, on `main`/`build-mvp`): the
-collector, scheduler, instance registry, D1 schema and migrations, the JSON API
-under `/api/v1/`, the server-rendered pages, the methodology and privacy
-documents, and the test suite. None of it involved WebMCP or any agent tooling.
+- **27 August:** design, collector, scheduler, API, pages, deployment, tests.
+- **28 August onwards:** everything WebMCP. All five tools, the two read-only
+  endpoints (`/api/v1/evaluate`, `/api/v1/trending`), the `/compare` page, the
+  `/webmcp` diagnostics page, and every document in `docs/webmcp/`, in
+  individually dated commits on `build-mvp` (first: `73e4e96`, "WebMCP: goals,
+  process, five utterances, and the lookup_hashtag schema").
 
-**Work during the Submission Period** (branch `webmcp`, from 28 August 2026):
-
-| Commit | Date | What |
-|---|---|---|
-| `73e4e96` | 28 Aug 2026 | Goals, process, five utterances, `lookup_hashtag` schema |
-| `d98670c` | 28 Aug 2026 | `evaluate_hashtags` tool, `/api/v1/evaluate` read-only endpoint, `src/suggest.ts` and tests, `src/webmcp.ts` registration served from the layout |
-| `8257a58` | 28 Aug 2026 | Entry plan against the official rules |
-
-| `ed5f28e`–`b3585f6` | 28 Aug 2026 | Native-API-first registration, `/webmcp` diagnostics, server-reported fallback, `trending_hashtags`, `compare_hashtags` with in-page rendering, `lookup_hashtag`, `describe_coverage` |
-
-Later commits on the branch continue the list. The full diff is the GitHub
-compare view `build-mvp...webmcp`. Every file under `docs/webmcp/`, plus
-`src/webmcp.ts` and `src/suggest.ts`, is new; the changes to `src/api.ts`,
-`src/db.ts`, `src/index.ts` and `src/ui.ts` are the endpoint, its query, its
-route and the script tag.
+The full dated history is the repository's commit log on `build-mvp`. The
+WebMCP-specific files are `src/webmcp.ts`, `src/suggest.ts`, `src/trending.ts`
+and `docs/webmcp/`; the WebMCP-driven changes to `src/api.ts`, `src/db.ts`,
+`src/index.ts` and `src/ui.ts` are the endpoints, their queries, their routes
+and the script tag.
 
 ## Open questions
 
