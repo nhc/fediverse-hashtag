@@ -56,6 +56,14 @@ page; licence; prior/new-work record; repo pushed (private).
       lookup refusal, coverage answer. Most already captured today.
 - [ ] Submit by Wednesday 2 September, 9 pm UK. Confirm status is "submitted".
 
+**Raising the score (agreed 31 Aug)**
+- [x] The same-question-twice exhibit and expected behaviour per tool, on
+      `/webmcp` (done 31 Aug).
+- [ ] `check_claim`: the agent submits the claim it intends to make and the
+      index referees it against coverage and comparability. Tuesday.
+- [ ] Page-aware `explain_this_page` tool via ontoolchange. Review after
+      check_claim; drop if time is short.
+
 **Nice to have, not gating**
 - [ ] Tag page Coverage panel grades zero observations as "thin" in red;
       should say nothing observed instead.

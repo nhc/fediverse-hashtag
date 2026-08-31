@@ -967,25 +967,64 @@ export function webmcpPage(statement: string): string {
 The design, and why the tools look the way they do, is in the repository under
 <code>docs/webmcp/</code>. This page reports what your browser exposes.</p>
 <pre id="webmcp-report">Checking…</pre>
-<h2>Tools</h2>
+
+<h2>The same question, twice</h2>
+<p>Ask an agent how busy #news is. Without tools, it reads this site's pages
+and answers with whatever survives the summary. In our testing that answer was
+a post count. True as far as it went, but the parts that made the number safe
+to publish were gone: that it is observed by eight monitored servers rather
+than the fediverse, that 18 posts per author is the shape of wire services
+rather than a conversation, and that the trend could not be compared that hour
+because coverage had shifted.</p>
+<p>With tools, the same agent answered from a result that carries those parts
+as fields it must read. Asked for trending tags, it replied with directions
+per tag and closed, unprompted: the figures are from the index's monitored
+servers, not the entire fediverse. Asked about a hashtag the index is not yet
+collecting, it said there was no reliable estimate, explained the 50-tag
+ceiling, and added that two servers' own counters showing little use is not
+evidence the tag is unused. The caveats stopped being prose to lose and became
+data to carry.</p>
+
+<h2>Tools, and what to expect from each</h2>
 <ul>
   <li><code>evaluate_hashtags</code>: check up to ten hashtags you are thinking of
-  using against what the index has observed. Read-only; registers nothing.</li>
+  using against what the index has observed. Read-only; registers nothing.
+  <em>Expect:</em> a ranking by distinct accounts, and for tags this index has
+  never seen, the servers' own weekly counters, labelled as a different kind of
+  evidence.</li>
   <li><code>trending_hashtags</code>: the busiest tracked tags in the last hour,
-  ranked by distinct authors, each with a trend that says when it cannot be
-  compared. Read-only.</li>
+  ranked by distinct authors. Read-only.
+  <em>Expect:</em> a direction per tag that can honestly refuse: not_comparable
+  when coverage shifted between hours, insufficient below five authors.</li>
   <li><code>compare_hashtags</code>: two to four hashtags side by side. Takes you
   to a <a href="/compare?tags=news,photography">comparison page</a> that anyone can
   open, link to, or reach from a form, and returns the same figures to the agent.
-  Read-only.</li>
+  Read-only.
+  <em>Expect:</em> the browser to navigate there, and a warning when the tags'
+  evidence is not like for like.</li>
   <li><code>lookup_hashtag</code>: one hashtag in depth, with every figure's
-  provenance and a plain refusal when there is not enough to answer. This one
-  is a search: it registers the tag and may start collecting it, and says so.</li>
+  provenance. This one is a search: it registers the tag and may start
+  collecting it, and says so.
+  <em>Expect:</em> for an obscure tag, a refusal with the reason and what would
+  change it. That refusal is deliberate; it is the point of the site.</li>
   <li><code>describe_coverage</code>: what the index can and cannot see, so an
-  agent learns the limits before it makes claims. Read-only.</li>
+  agent learns the limits before it makes claims. Read-only.
+  <em>Expect:</em> the agent to start saying "observed by this index across
+  eight monitored servers" rather than "across the fediverse".</li>
 </ul>
-<p class="note">Try asking your agent, on any page of this site: “I’m writing a
-post, which hashtags fit it best?” followed by the draft.</p>
+
+<h2>Five things to try</h2>
+<p>Say any of these to your agent, on any page of this site, in your own words.</p>
+<ol>
+  <li>"I'm writing this post, which hashtags fit it best?" followed by a short
+  draft. The agent proposes candidates itself; the index grades them.</li>
+  <li>"Compare #news and #photography over the last day." The comparison opens
+  on the page you are both looking at.</li>
+  <li>"Which hashtags are trending right now?" Note the scope in the answer.</li>
+  <li>"Tell me about #photography." Then an obscure tag, to see it decline.</li>
+  <li>"How much of the fediverse can you actually see?" The honest answer is
+  the feature.</li>
+</ol>
 <script>${WEBMCP_DIAGNOSTIC_SCRIPT}</script>`,
     statement,
   );
