@@ -50,6 +50,7 @@ import {
   type DiscoveryOrder,
 } from './discovery';
 import { askServersAboutTag, ensureTagHistory } from './history';
+import { checkClaim, CLAIMS, type Claim, type ClaimEvidence, type Scope } from './claims';
 import { casefoldTag } from './normalise';
 import {
   evaluateCandidates,
@@ -760,5 +761,101 @@ export async function trendingResponse(env: Env, rawLimit: string | null, now: n
         t === null ? null : new Date(t * 1000).toISOString(),
       ),
     },
+  });
+}
+
+/**
+ * Referee a claim an agent intends to make about a hashtag.
+ *
+ * Registers nothing: refereeing what may be said must not itself be a signal,
+ * for the same reason evaluate does not register. Evidence is assembled from
+ * the same sources the other read-only paths use, and the judgement lives in
+ * src/claims.ts, where it is tested.
+ *
+ * GET /api/v1/check?tag=news&claim=rising&scope=index
+ */
+export async function checkClaimResponse(
+  env: Env,
+  rawTag: string | null,
+  rawClaim: string | null,
+  rawScope: string | null,
+  now: number,
+): Promise<Response> {
+  const name = rawTag === null ? null : normaliseTagInput(rawTag);
+  if (name === null) return json({ error: 'give a hashtag as ?tag=' }, 400);
+  const claim = CLAIMS.find((c) => c === rawClaim) as Claim | undefined;
+  if (claim === undefined) {
+    return json({ error: `give a claim as ?claim=, one of: ${CLAIMS.join(', ')}` }, 400);
+  }
+  const scope: Scope = rawScope === 'fediverse' ? 'fediverse' : 'index';
+
+  const [overview, instances, currentReporting, previousReporting] = await Promise.all([
+    tagOverview(env.DB, now),
+    loadInstances(env.DB),
+    instancesReporting(env.DB, now - 3600, now),
+    instancesReporting(env.DB, now - 7200, now - 3600),
+  ]);
+  const monitored = instances.filter(isMonitored);
+  const hoursComparable = isCoverageComparable({
+    instancesMonitored: monitored.length,
+    currentReporting,
+    previousReporting,
+  });
+
+  const tracked = overview.find((t) => t.name === name);
+  let evidence: ClaimEvidence;
+  if (tracked !== undefined) {
+    const tagRow = await findTag(env.DB, name);
+    const masks = tagRow === null ? [] : await maskDistribution(env.DB, tagRow.id, now - 86_400, now);
+    const medianSeen = weightedMedianPopcount(masks);
+    evidence = {
+      tag: name,
+      display: tracked.display ?? name,
+      standing: 'tracked',
+      authors24h: tracked.authors24h,
+      posts24h: tracked.posts24h,
+      originServers24h: tracked.originServers24h,
+      authors1h: tracked.authors1h,
+      authorsPrev1h: tracked.authorsPrev1h,
+      hoursComparable,
+      coverage: coverageQuality(medianSeen, monitored.length),
+      sightingAuthors: null,
+      serverReportedAccounts7d: null,
+      serverReportedSources: 0,
+      instancesMonitored: monitored.length,
+    };
+  } else {
+    const [sightings, reports] = await Promise.all([
+      candidateStats(env.DB, [name], now - 48 * 3600),
+      askServersAboutTag(env, name, now),
+    ]);
+    const sighting = sightings[0];
+    const summary = summariseServerReports(reports);
+    evidence = {
+      tag: name,
+      display: name,
+      standing: sighting !== undefined ? 'discovered' : 'unseen',
+      authors24h: null,
+      posts24h: null,
+      originServers24h: null,
+      authors1h: null,
+      authorsPrev1h: null,
+      hoursComparable,
+      coverage: null,
+      sightingAuthors: sighting?.distinctAuthors ?? null,
+      serverReportedAccounts7d: summary?.accounts_7d ?? null,
+      serverReportedSources: summary?.source_servers.length ?? 0,
+      instancesMonitored: monitored.length,
+    };
+  }
+
+  const verdict = checkClaim(claim, scope, evidence);
+  return json({
+    as_of: new Date(now * 1000).toISOString(),
+    completeness: 'partial',
+    statement: STATEMENT,
+    ...verdict,
+    evidence,
+    side_effects: { queries_registered: 0 },
   });
 }

@@ -273,7 +273,47 @@ export const WEBMCP_SCRIPT = `
     }
   };
 
-  var tools = [evaluateHashtags, trendingHashtags, compareHashtags, lookupHashtag, describeCoverage];
+  // The referee. The agent submits the claim it intends to make; the index
+  // checks it against the same rules the site holds itself to and returns the
+  // sentence it can stand behind.
+  var checkClaimTool = {
+    name: 'check_claim',
+    description:
+      'Before you assert something about a hashtag, submit the claim here and ' +
+      'the index will referee it against its own data and coverage rules. ' +
+      'claim is one of: rising, falling (checked against comparable hours), ' +
+      'busy, quiet (returned as qualified, with the exact sentence the index ' +
+      'can stand behind), in_use, unused (unused is always blocked: absence of ' +
+      'evidence is not evidence of absence). scope fediverse is always blocked, ' +
+      'because no complete view of the network exists. The result is allowed, ' +
+      'qualified or blocked, with a reason and may_say, a sentence that is true ' +
+      'on the evidence; prefer may_say over your own wording. Read-only, ' +
+      'registers nothing.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tag: { type: 'string', minLength: 1, maxLength: 100,
+               description: 'The hashtag the claim is about, with or without the leading #.' },
+        claim: { type: 'string',
+                 enum: ['rising', 'falling', 'busy', 'quiet', 'in_use', 'unused'],
+                 description: 'The claim you intend to make.' },
+        scope: { type: 'string', enum: ['index', 'fediverse'], default: 'index',
+                 description: 'index: about what this index observes. fediverse: about the whole network.' }
+      },
+      required: ['tag', 'claim']
+    },
+    async execute(args) {
+      if (typeof args === 'string') { try { args = JSON.parse(args); } catch (e) { args = {}; } }
+      var tag = String((args && args.tag) || '').trim().replace(/^#/, '');
+      var url = '/api/v1/check?tag=' + encodeURIComponent(tag) +
+        '&claim=' + encodeURIComponent(String((args && args.claim) || '')) +
+        '&scope=' + encodeURIComponent(String((args && args.scope) || 'index'));
+      var res = await fetch(url, { headers: { 'x-webmcp-tool': 'check_claim' } });
+      return asText(await res.json());
+    }
+  };
+
+  var tools = [evaluateHashtags, trendingHashtags, compareHashtags, lookupHashtag, describeCoverage, checkClaimTool];
 
   function register() {
     if (registered) return;

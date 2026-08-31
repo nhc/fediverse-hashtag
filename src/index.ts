@@ -23,6 +23,7 @@ import {
   evaluateResponse,
   trendingResponse,
   buildEvaluateData,
+  checkClaimResponse,
 } from './api';
 import { collectTick, configFromEnv } from './collect';
 import {
@@ -146,6 +147,15 @@ export default {
       if (path === '/api/v1/meta') return await metaResponse(env, now);
       if (path === '/api/v1/tags') {
         return await tagsResponse(env, now, parseOrder(url.searchParams.get('order')));
+      }
+      if (path === '/api/v1/check') {
+        return await checkClaimResponse(
+          env,
+          url.searchParams.get('tag'),
+          url.searchParams.get('claim'),
+          url.searchParams.get('scope'),
+          now,
+        );
       }
       if (path === '/api/v1/trending') {
         return await trendingResponse(env, url.searchParams.get('limit'), now);

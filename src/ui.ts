@@ -1013,6 +1013,12 @@ data to carry.</p>
   agent learns the limits before it makes claims. Read-only.
   <em>Expect:</em> the agent to start saying "observed by this index across
   eight monitored servers" rather than "across the fediverse".</li>
+  <li><code>check_claim</code>: the agent submits the claim it intends to make,
+  such as "#news is rising", and the index referees it against its own coverage
+  rules. Read-only; registers nothing.
+  <em>Expect:</em> allowed, qualified or blocked, with a reason and the sentence
+  the index can stand behind. "Unused" and anything fediverse-wide are always
+  blocked.</li>
 </ul>
 
 <h2>Five things to try</h2>
@@ -1026,6 +1032,8 @@ data to carry.</p>
   <li>"Tell me about #photography." Then an obscure tag, to see it decline.</li>
   <li>"How much of the fediverse can you actually see?" The honest answer is
   the feature.</li>
+  <li>"Can you say #news is rising across the fediverse right now? Check before
+  you answer." Watch the index referee the claim.</li>
 </ol>
 <script>${WEBMCP_DIAGNOSTIC_SCRIPT}</script>`,
     statement,

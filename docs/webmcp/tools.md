@@ -5,7 +5,7 @@ agent while on this site. The reply is what we would want the agent to say
 back, given only what the tool returned. If a reply needed information the tool
 did not give, the tool changed. Read [README.md](README.md) for why.
 
-Six utterances, five tools:
+Seven utterances, six tools:
 
 | Tool | Registers a query? | Renders in page? |
 |---|---|---|
@@ -14,6 +14,7 @@ Six utterances, five tools:
 | `trending_hashtags` | no | no |
 | `describe_coverage` | no | no |
 | `evaluate_hashtags` | no | no |
+| `check_claim` | no | no |
 
 ## The utterances
 
@@ -214,9 +215,46 @@ monitored-servers caveat intact. No fabrication. So `trending_hashtags` earns
 its place through structured provenance and comparability, not by rescuing a
 wrong answer, which moved it down the build order.
 
+### 7. "Can you say #news is rising across the fediverse?"
+
+**Tool:** `check_claim({ tag: "news", claim: "rising", scope: "fediverse" })`
+
+The other tools hand the agent evidence and trust it to phrase the claim
+well. This one closes the loop: the agent submits the claim it intends to
+make, and the index referees it against the same rules the site holds itself
+to. Registers nothing, for the same reason evaluate does not.
+
+**Reply we want:**
+
+> No, and the index itself says why not. A fediverse-wide claim is blocked
+> outright: no server can see the whole network, so there is nothing to check
+> it against. Scoped to what the index observes, "rising" is checkable, and
+> right now it comes back blocked too, because the last two hours were
+> reported by different shares of the monitored servers. What I can say is
+> what it offered instead: #news was used by 445 accounts across 110 origin
+> servers in the last 24 hours, as observed by this index across 8 monitored
+> servers.
+
+**The rules, from `src/claims.ts`:**
+
+- Directions (`rising`, `falling`) are checkable, so they come back `allowed`
+  or `blocked`: blocked when the hours are not comparable, when there are too
+  few authors to call, when the data is flat, or when it says the opposite.
+- Adjectives (`busy`, `quiet`) are judgements, so they come back `qualified`
+  with `may_say`, the sentence the index can stand behind, figures attached.
+  `quiet` is blocked under thin coverage, because missing posts and quiet look
+  the same.
+- `in_use` is allowed on positive evidence from any source, named. `unused` is
+  always blocked: absence of evidence is not evidence of absence.
+- `scope: "fediverse"` is always blocked, with the honestly scoped sentence
+  offered in its place.
+
+Every verdict carries `may_say`, so a blocked claim is never a dead end, and
+the tool description tells the agent to prefer `may_say` over its own wording.
+
 ## Build status, 28 August 2026
 
-All five tools are built, deployed from `build-mvp`, and registered on every
+All tools are built, deployed from `build-mvp`, and registered on every
 page. `evaluate_hashtags`, `trending_hashtags` and `compare_hashtags` are
 verified end to end in both judging browsers (see the notes under each
 utterance). `lookup_hashtag` is verified in ChatGPT's browser on both branches (28 Aug,
