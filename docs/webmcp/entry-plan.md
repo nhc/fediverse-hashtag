@@ -58,7 +58,7 @@ page; licence; prior/new-work record; repo pushed (private).
 
 **Raising the score (agreed 31 Aug)**
 - [x] The same-question-twice exhibit and expected behaviour per tool, on
-      `/webmcp` (done 31 Aug).
+      `/webmcp` (done 31 Aug; Neil reviewed the page and approved it).
 - [ ] `check_claim`: the agent submits the claim it intends to make and the
       index referees it against coverage and comparability. Tuesday.
 - [ ] Page-aware `explain_this_page` tool via ontoolchange. Review after
