@@ -52,8 +52,13 @@ page; licence; prior/new-work record; repo pushed (private).
       YouTube as Public, no music, no logos in the thumbnail.
 - [x] Text description drafted in `devpost-submission.md`, with Built-with
       tags, links and testing instructions. Check figures before pasting.
-- [ ] Screenshots for the form: pottery evaluation, trending, compare page,
-      lookup refusal, coverage answer. Most already captured today.
+- [ ] Screenshots for the form. Captured: pottery evaluation, trending,
+      compare page (mixed and approved), lookup happy path and refusal,
+      coverage answer, check_claim referee, and the combined
+      trending-plus-scope shot (31 Aug, 19:03 UK, the strongest single
+      capture). Still wanted: too-few-authors refusal, caturday unused
+      punchline, hobby draft, like-for-like compare, trust follow-up,
+      tools-on-a-tag-page.
 - [ ] Submit by Wednesday 2 September, 9 pm UK. Confirm status is "submitted".
 
 **Raising the score (agreed 31 Aug)**
