@@ -30,7 +30,7 @@ deployment that falls over. Do not plan to use the final day.
 ## Outstanding, kept current
 
 The live to-do list. Update this section rather than the chat. Last updated
-Monday 31 August 2026, 19:30 UK.
+Monday 31 August 2026, 19:05 UK, after the check_claim agent test.
 
 **Built and verified:** five tools, live from `build-mvp`, all verified in
 ChatGPT's in-app browser and Chrome 151; `/webmcp` diagnostics; `/compare`
@@ -61,7 +61,8 @@ page; licence; prior/new-work record; repo pushed (private).
       `/webmcp` (done 31 Aug; Neil reviewed the page and approved it).
 - [x] `check_claim` built with 14 unit tests and deployed (31 Aug): directions
       checked, adjectives qualified with the sentence the index stands behind,
-      unused and fediverse-wide claims always blocked. Awaiting one agent test.
+      unused and fediverse-wide claims always blocked. Agent test passed
+      31 Aug, 19:00 UK; the exchange is recorded in tools.md.
 - [ ] Page-aware `explain_this_page` tool via ontoolchange. Review after
       check_claim; drop if time is short.
 

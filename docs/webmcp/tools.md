@@ -235,6 +235,14 @@ to. Registers nothing, for the same reason evaluate does not.
 > servers in the last 24 hours, as observed by this index across 8 monitored
 > servers.
 
+**Verified, 31 August, 19:00 UK.** Asked exactly that in ChatGPT's browser,
+the agent replied: "No. The index blocks a fediverse-wide claim, and its
+comparable observed data says the opposite: #news is falling on the servers
+it monitors, 182 authors in the prior hour vs 109 in the latest hour.
+Coverage is thin (8 monitored servers)." Both scopes refereed, the
+counter-evidence quoted, the coverage grade carried. This is the exchange
+that closes the video.
+
 **The rules, from `src/claims.ts`:**
 
 - Directions (`rising`, `falling`) are checkable, so they come back `allowed`
