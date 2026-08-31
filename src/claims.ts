@@ -226,9 +226,11 @@ export function checkClaim(claim: Claim, scope: Scope, e: ClaimEvidence): ClaimV
         claim, scope,
         verdict: 'blocked',
         reason:
-          'Absence of evidence is not evidence of absence. This index sees a small slice of the ' +
-          'network, so it can never support a claim that a tag is unused.',
-        may_say: fallbackSentence(e),
+          (e.authors24h ?? 0) > 0
+            ? 'The claim is false on this index\'s own data: the tag was observed in use in the last 24 hours.'
+            : 'Absence of evidence is not evidence of absence. This index sees a small slice of the ' +
+              'network, so it can never support a claim that a tag is unused.',
+        may_say: (e.authors24h ?? 0) > 0 ? observedSentence(e) : fallbackSentence(e),
       };
   }
 }

@@ -112,4 +112,11 @@ describe('existence', () => {
     expect(v.verdict).toBe('blocked');
     expect(v.reason).toContain('Absence of evidence');
   });
+
+  it('blocks unused for an observed tag as false, and offers the observed figures', () => {
+    const v = checkClaim('unused', 'index', evidence({}));
+    expect(v.verdict).toBe('blocked');
+    expect(v.reason).toContain('false');
+    expect(v.may_say).toContain('100 accounts');
+  });
 });
