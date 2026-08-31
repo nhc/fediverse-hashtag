@@ -967,6 +967,8 @@ export function webmcpPage(statement: string): string {
 The design, and why the tools look the way they do, is in the repository under
 <code>docs/webmcp/</code>. This page reports what your browser exposes.</p>
 <pre id="webmcp-report">Checking…</pre>
+<details><summary>Full detail, for diagnosing problems</summary>
+<pre id="webmcp-report-detail"></pre></details>
 
 <h2>The same question, twice</h2>
 <p>Ask an agent how busy #news is. Without tools, it reads this site's pages

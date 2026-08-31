@@ -296,32 +296,38 @@ export const WEBMCP_SCRIPT = `
 export const WEBMCP_DIAGNOSTIC_SCRIPT = `
 (async function () {
   var el = document.getElementById('webmcp-report');
+  var detailEl = document.getElementById('webmcp-report-detail');
   if (!el) return;
   var lines = [];
+  var detail = [];
   var nav = null, doc = null;
   try { nav = navigator.modelContext || null; } catch (e) {}
   try { doc = document.modelContext || null; } catch (e) {}
-  lines.push('navigator.modelContext: ' + (nav ? 'present' : 'absent'));
-  lines.push('document.modelContext: ' + (doc ? 'present' : 'absent') + (nav && doc ? (nav === doc ? ' (same object)' : ' (different object)') : ''));
   var host = doc || nav;
   if (host) {
-    lines.push('using: ' + (doc ? 'document.modelContext' : 'navigator.modelContext (deprecated; document.modelContext absent here)'));
-    var names = [];
-    try { var p = Object.getPrototypeOf(host); names = Object.getOwnPropertyNames(p).filter(function (n) { return n !== 'constructor'; }); } catch (e) {}
-    lines.push('methods: ' + (names.join(', ') || 'unknown'));
+    lines.push('WebMCP is available in this browser, using ' + (doc ? 'document.modelContext' : 'navigator.modelContext (deprecated form; document.modelContext absent here)') + '.');
     try {
       if (typeof host.getTools === 'function') {
         var tools = await host.getTools();
-        lines.push('tools registered: ' + tools.length + (tools.length ? ' (' + tools.map(function (t) { return t.name; }).join(', ') + ')' : ''));
+        lines.push(tools.length + ' tool' + (tools.length === 1 ? '' : 's') + ' registered' + (tools.length ? ': ' + tools.map(function (t) { return t.name; }).join(', ') : '') + '.');
       } else {
-        lines.push('tools registered: getTools not available; our script registered on ' + (window.__webmcpRegistered ? window.__webmcpRegistered() : '?') + ' object(s)');
+        lines.push('This browser does not list tools, but this page registered ' + (window.__webmcpRegistered ? window.__webmcpRegistered() : '?') + '.');
       }
-    } catch (e) { lines.push('getTools failed: ' + e); }
+    } catch (e) { lines.push('Listing tools failed: ' + e); }
+    if (!window.isSecureContext) lines.push('Warning: not a secure context, so agents may not see the tools.');
   } else {
     lines.push('No model context in this browser. WebMCP is off or unsupported here.');
   }
-  lines.push('secure context: ' + window.isSecureContext);
-  lines.push('user agent: ' + navigator.userAgent);
+  detail.push('navigator.modelContext: ' + (nav ? 'present' : 'absent'));
+  detail.push('document.modelContext: ' + (doc ? 'present' : 'absent') + (nav && doc ? (nav === doc ? ' (same object)' : ' (different object)') : ''));
+  if (host) {
+    var names = [];
+    try { var p = Object.getPrototypeOf(host); names = Object.getOwnPropertyNames(p).filter(function (n) { return n !== 'constructor'; }); } catch (e) {}
+    detail.push('methods: ' + (names.join(', ') || 'unknown (plain object)'));
+  }
+  detail.push('secure context: ' + window.isSecureContext);
+  detail.push('user agent: ' + navigator.userAgent);
   el.textContent = lines.join('\\n');
+  if (detailEl) detailEl.textContent = detail.join('\\n');
 })();
 `;
