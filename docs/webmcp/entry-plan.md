@@ -46,8 +46,8 @@ page; licence; prior/new-work record; repo pushed (private).
 **Entry logistics still open (Neil)**
 - [ ] Register on Devpost and save a draft submission. Note any form fields
       not covered by this document.
-- [ ] Decide when to flip `nhc/fediverse-hashtag` to public. Required before
-      submission; earlier makes the README compare link work for anyone.
+- [x] Repository flipped to public 31 Aug, 19:40 UK. Anonymous access
+      returns 200 and GitHub detects the MIT licence.
 - [ ] Video: 2:30 script from the captured exchanges, record, upload to
       YouTube as Public, no music, no logos in the thumbnail.
 - [x] Text description drafted in `devpost-submission.md`, with Built-with
