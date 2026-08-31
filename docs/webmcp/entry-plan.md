@@ -63,8 +63,10 @@ page; licence; prior/new-work record; repo pushed (private).
       candidates, server-reported counts quoted, "an indication of activity,
       not a fediverse-wide count"). The too-few-authors refusal landed 19:33 (one author in each of
       the last two comparable hours; may_say quoted verbatim), completing the
-      set of three distinct refusal reasons. Still wanted: like-for-like
-      compare, trust follow-up, tools-on-a-tag-page.
+      set of three distinct refusal reasons. The like-for-like compare and the trust follow-up landed together
+      19:35 (comparison open on the page; "trust the comparison, don't treat
+      them as fediverse-wide totals"; 25 vs 4 posts per author read as
+      syndication). Still wanted: tools-on-a-tag-page.
 - [ ] Submit by Wednesday 2 September, 9 pm UK. Confirm status is "submitted".
 
 **Raising the score (agreed 31 Aug)**
