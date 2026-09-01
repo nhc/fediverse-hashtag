@@ -62,7 +62,7 @@ person to hear.
 
 ## How it creates a better user experience
 
-Five tools, designed backwards from six things a person would actually say to
+Six tools, designed backwards from seven things a person would actually say to
 an agent while on the site.
 
 - "I'm writing this post, which hashtags fit it best?" The agent reads the
@@ -88,6 +88,13 @@ an agent while on the site.
   lists the monitored servers, their capabilities and the known limits, and
   tells the agent how to phrase any claim: "observed by this index across eight
   monitored servers", never "across the fediverse".
+- "Can you say #news is rising across the fediverse?" `check_claim` closes the
+  loop. The agent submits the claim it intends to make and the index referees
+  it against the rules the site holds itself to. A fediverse-wide claim is
+  always blocked, because no server can see the whole network. Directions come
+  back allowed or blocked, adjectives come back qualified, and every verdict
+  carries `may_say`, the sentence the index will stand behind, so a refusal is
+  never a dead end.
 
 ## What people and agents can do together that was difficult before
 
@@ -107,7 +114,7 @@ person what the call did.
 ## How WebMCP was implemented
 
 One script, served inline from the shared layout, feature-detected so browsers
-without a model context run nothing. It registers five tools on
+without a model context run nothing. It registers six tools on
 `document.modelContext` (falling back to `navigator.modelContext` where only
 the older form exists). Each tool's `execute` is a `fetch` to the site's own
 JSON API; no judgement lives in the browser that is not already in the tested
@@ -117,7 +124,7 @@ server code. Two new read-only endpoints were added for the agent use cases,
 found that ChatGPT's browser provides only `document.modelContext` and that
 Chrome now deprecates the `navigator` form.
 
-The design notes, the six utterances with the replies we designed against,
+The design notes, the seven utterances with the replies we designed against,
 and the verification record for both judging browsers are in the repository
 under `docs/webmcp/`.
 

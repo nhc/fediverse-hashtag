@@ -30,7 +30,7 @@ deployment that falls over. Do not plan to use the final day.
 ## Outstanding, kept current
 
 The live to-do list. Update this section rather than the chat. Last updated
-Monday 31 August 2026, 19:05 UK, after the check_claim agent test.
+Tuesday 1 September 2026, after the video script was written.
 
 **Built and verified:** five tools, live from `build-mvp`, all verified in
 ChatGPT's in-app browser and Chrome 151; `/webmcp` diagnostics; `/compare`
@@ -48,10 +48,16 @@ page; licence; prior/new-work record; repo pushed (private).
       not covered by this document.
 - [x] Repository flipped to public 31 Aug, 19:40 UK. Anonymous access
       returns 200 and GitHub detects the MIT licence.
-- [ ] Video: 2:30 script from the captured exchanges, record, upload to
-      YouTube as Public, no music, no logos in the thumbnail.
+- [ ] Video. Script written 1 Sep in `video-script.md`: 2:30, three demos
+      (evaluate, compare, check_claim), built from the verified exchanges,
+      with a trim order and a recording checklist. Two figures in it are
+      marked [check] and must be confirmed against the live site first.
+      Still to do: record, and upload to YouTube as Public, no music, no
+      logos in the thumbnail.
 - [x] Text description drafted in `devpost-submission.md`, with Built-with
       tags, links and testing instructions. Check figures before pasting.
+      Corrected 1 Sep: it said five tools and omitted `check_claim`. Now six,
+      with a bullet for it. A judge who greps `src/webmcp.ts` finds six.
 - [ ] Screenshots for the form. Captured: pottery evaluation, trending,
       compare page (mixed and approved), lookup happy path and refusal,
       coverage answer, check_claim referee, and the combined
