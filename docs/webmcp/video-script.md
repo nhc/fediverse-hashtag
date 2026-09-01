@@ -1,117 +1,151 @@
-# Demo video script
+# Demo video: script and production plan
 
-Written Tuesday 1 September 2026, from the exchanges verified in `tools.md`.
-Target 2:30. The hard limit in the rules is three minutes.
+Rewritten Tuesday 1 September 2026 after the organisers' email. Their rules
+that shaped this version: the project must be working on screen in the first
+10 to 15 seconds, no intros or title cards, inspiration stays in the written
+description, nothing typed live, all waiting cut, on-screen text instead of
+spoken explanation where it is faster, and the best material first because
+judges are not required to watch past three minutes.
 
-The voice-over runs continuously. The tool calls take a few seconds each, so
-record them in full and cut the waiting in the edit; the audio should not
-have gaps in it. Spoken length is roughly 2:40 at a normal pace, which
-leaves room to slow down and still come in under three minutes.
+Target 2:20 to 2:30. Spoken script is about 2:18 at a normal pace.
 
-Before recording, open the live site and check the two figures marked
-**[check]** below. They move.
+## Design decisions
 
-No title card, no music, no logos on screen except incidentally. Start on the
-site itself.
+- **The refusal opens the video.** `check_claim` is the most novel thing in
+  the entry and it states the whole thesis in one exchange. Hundreds of
+  submissions will show an agent doing a thing; very few will show a site
+  refereeing what the agent may say. If this feels wrong on the first cut,
+  swap clips 1 and 3 and move the framing line to the front.
+- **Three exchanges, no repetition.** Each shows a different capability:
+  refereeing a claim, changing what the person sees, and grading evidence.
+- **Framing is one sentence plus on-screen text**, not a spoken essay. The
+  problem story lives in the description, where the organisers asked for it.
+- **The script reads the same for your voice or an AI narrator.** Short
+  declarative sentences, no ambiguous symbols; "hashtag art", never "#art",
+  in anything spoken.
 
----
+## Recording order
 
-## 0:00 The problem
+Record the screen clips first, voice-over last. Two figures in the script
+are quoted from the exchanges (the hour-on-hour author counts in clip 1, and
+the observed figures in clip 4). They will be fresh on your screen when you
+record, so adjust those two sentences to match what the screen shows, then
+record the audio. Nothing in the narration should disagree with the pixels.
 
-**On screen:** the index home page, the tag list in shot. No cursor movement.
+Record each clip separately so one bad take does not cost the rest.
 
-> Every hashtag counter on the web gives you a number. Almost none of them
-> tell you where that number came from. On the fediverse the gap is
-> structural. There is no central server, so no complete count of anything can
-> exist. Every figure is a view from somewhere.
+## Clip list
 
-## 0:18 What the site does about it
+### Clip 1, 0:00 to 0:34: check_claim, the referee
 
-**On screen:** open a tag page, scroll so the Coverage panel is visible.
+**Screen:** the live site with the agent panel open. The question is already
+pasted in the input: "Can you say #news is rising across the fediverse?"
+Send is clicked within the first second. The `check_claim` tool call must be
+visible, then the refusal.
 
-> This index polls public hashtag timelines across nine Mastodon-compatible
-> servers **[check]**, deduplicates what it sees, and publishes every figure
-> with its provenance: which servers contributed, how many were healthy, and
-> when it last updated. If two periods were not covered comparably, it will
-> not call a trend.
+**On-screen text at ~0:20:** `check_claim: the site referees what the agent may say`
 
-## 0:36 Why WebMCP
+> This is a live hashtag activity index for the fediverse, and I have just
+> asked the agent to make a claim the data cannot support. It calls
+> check_claim, one of the site's six WebMCP tools, and the site referees the
+> claim. The fediverse-wide version is blocked, because no server can see the
+> whole network. Scoped to what the index observes, it is blocked as well,
+> because the data says the opposite: 182 authors in the prior hour against
+> 109 in the latest. **[match to screen]** And it hands back the sentence the
+> index will stand behind.
 
-**On screen:** open the agent panel beside the page.
+### Clip 2, 0:34 to 0:48: the framing
 
-> Then agents started reading pages. An agent that scrapes a number keeps the
-> number and drops the caveats, and the caveats were the point. So this site
-> registers six WebMCP tools that hand the agent the evidence in a shape it
-> cannot drop on the way to you.
+**Screen:** cut to a tag page with the Coverage panel in shot. Hold still.
 
-## 0:52 Demo one: the draft
+**On-screen text:** `6 tools · 1 result shape · provenance required on every result, refusals included`
 
-**On screen:** paste the pottery draft and ask which hashtags fit it best.
-Let the tool call show. (Verified 28 Aug, 13:16 UK.)
+> Nobody can count the whole fediverse, so every number this site publishes
+> carries its provenance. The WebMCP tools hand that evidence to the agent in
+> a shape it cannot drop on the way to you.
 
-> Here is a draft about pottery. The index stores no post content, so it
-> cannot read it. The agent proposes the tags, because language is what it is
-> good at, and the tool reports what the index has actually seen of each. It
-> gives hashtag Art with observed figures, 385 accounts across 112 servers.
-> The niche tags it labels as server-reported seven-day data, a different
-> source, and says so out loud. And it advises skipping one that is tracked
-> but has gone quiet.
+### Clip 3, 0:48 to 1:12: compare_hashtags, the agent changes the page
 
-## 1:20 Demo two: the comparison
+**Screen:** question already pasted: "Compare #pottery and #art". Tool call
+fires, the browser lands on `/compare?tags=Art,pottery`, sparklines render,
+the not-like-for-like callout is in shot. Cut the navigation wait.
 
-**On screen:** ask it to compare two tags. The browser lands on
-`/compare?tags=...` with the sparklines. (Verified 28 Aug, 15:07 UK.)
+**On-screen text:** `The agent and the person are looking at the same URL`
 
-> Ask for a comparison and the tool does not just return numbers. It takes you
-> to a real page, with a URL you can share, that anyone could have reached
-> from the form themselves. The agent and the person end up looking at the
-> same thing. Here it flags that the two tags are not like for like, and the
-> page says the same thing in the callout.
+> Ask for a comparison and the tool does not just return numbers. It takes
+> the browser to a real page with a URL anyone can share, the same page you
+> could reach from the form. Both the agent and the page flag that this is
+> not a like-for-like comparison, because one figure is observed and the
+> other is server-reported.
 
-## 1:45 Demo three: the refusal
+### Clip 4, 1:12 to 1:44: evaluate_hashtags, graded evidence
 
-**On screen:** ask whether it can say hashtag news is rising across the
-fediverse. (Verified 31 Aug, 19:00 UK.)
+**Screen:** the pottery draft pasted in one action, with "which hashtags fit
+this post best?" The reply should show the observed figures for #Art and the
+server-reported label on the niche tags. (This is the exchange verified
+28 Aug, 13:16 UK; re-run it live.)
 
-> The last tool closes the loop. The agent submits the claim it wants to make,
-> and the index referees it. Can it say hashtag news is rising across the
-> fediverse? No. A fediverse-wide claim is blocked outright, because no server
-> sees the whole network. Scoped to what this index does observe, the claim is
-> checkable, and it comes back blocked as well, because the data says the
-> opposite: 182 accounts in the prior hour against 109 in the latest
-> **[check]**. Every verdict carries a sentence the index will stand behind,
-> so a refusal is never a dead end.
+**On-screen text:** `side_effects: queries_registered: 0`
 
-## 2:17 Close
+> The index stores no post content, so it cannot read a draft. The agent
+> proposes candidate tags, because language is what it is good at, and
+> evaluate_hashtags reports the evidence for each one. Hashtag art comes back
+> observed: 385 accounts across 112 servers. **[match to screen]** The niche
+> tags come back server-reported, a different kind of evidence, and labelled
+> as such. The result also reports that no queries were registered, because
+> asking for advice must not change what the index collects.
 
-**On screen:** back to the home page, or `/webmcp` with the six tools listed.
+### Clip 5, 1:44 to 1:56: the surface, on one page
 
-> Six tools, one result shape, and provenance required on every one of them,
-> including the refusals. WebMCP is what let a website hand an agent not just
-> its data, but the limits of its data. It is open source, and the site is
-> live.
+**Screen:** `/webmcp`, scrolled to the six tools and the same-question-twice
+exhibit. No interaction needed; a slow scroll is enough.
 
----
+> The whole surface is on one page. Slash webmcp lists the six tools and
+> answers the same question with and without them, so you can see exactly
+> what the tools change.
+
+### Clip 6, 1:56 to 2:18: close
+
+**Screen:** back on the home page, or the tag list.
+
+**On-screen text:** the live URL and the repository URL, plain text.
+
+> Everything the agent receives, a person can check on the page. There are
+> six tools with one result shape, and provenance is required on every
+> result, including the refusals. WebMCP is what lets a website hand an agent
+> not just its data, but the limits of its data. The site is live, and the
+> code is open.
+
+## Edit notes
+
+- Cut every wait: tool spinners, page loads, model thinking. Jump cuts are
+  expected; do not smooth them.
+- Speed up any unavoidable slow moment slightly rather than leaving dead air.
+- The audio runs continuously over the cuts. Record it in one or two takes
+  after the picture is locked.
+- Keep the agent panel and the page both in frame whenever a tool is called.
+  A judge must be able to see the tool being used, not infer it.
+- No music. No title cards. ChatGPT, Chrome and Mastodon branding stays
+  incidental; none of it in the thumbnail.
+- Thumbnail: a plain frame of the site, or the compare page. No logos.
 
 ## If it runs long
 
-Cut in this order, and stop as soon as it fits:
+Cut in this order and stop when it fits:
 
-1. In demo two, the sentence beginning "The agent and the person".
-2. In the opening, "Every figure is a view from somewhere."
-3. In demo one, the sentence about skipping the quiet tag.
+1. Clip 5 entirely (the /webmcp scroll). The description covers it.
+2. The final sentence of clip 3, beginning "Both the agent and the page".
+3. The framing voice-over in clip 2; keep the shot and the on-screen text.
 
-Do not cut demo three. The refusal is the point of the entry, and the rules
-reward showing it.
+Do not cut clip 1. It is the entry.
 
-## Recording checklist
+## Upload checklist
 
-- [ ] Live site checked, and the two **[check]** figures updated in this script.
-- [ ] Agent panel and page both visible in frame for every tool call.
-- [ ] Each tool call visibly happens; do not cut so tightly that a judge
-      cannot see the tool being used.
-- [ ] Audio recorded in one take if possible, over the edited screen capture.
-- [ ] No music. No third-party logo in the thumbnail or any title card.
-- [ ] Length under 3:00, ideally 2:30 to 2:45.
+- [ ] Length under 3:00.
+- [ ] Both **[match to screen]** figures agree with the recording.
+- [ ] Every tool call visibly on screen.
 - [ ] Uploaded to YouTube as **Public**, not Unlisted.
+- [ ] Title is plain and names the project: "Fediverse Hashtag Activity
+      Index: WebMCP demo".
 - [ ] Link opened in a private window to confirm it plays for a stranger.
+- [ ] Video URL pasted into the Devpost draft.
