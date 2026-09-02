@@ -4,6 +4,9 @@ Everything needed at record time, in order: what is on screen, the exact
 text to paste into the agent panel, and the narration to read. The captions
 are added in the edit; they are listed here so the whole video lives in one
 document. The production plan and edit notes are in `video-script.md`.
+Drop the recordings in the repository `video/` folder (gitignored, media
+never committed) and assemble them with `scripts/stitch-video.sh`; the
+steps are in `video/README.md`.
 
 Only the indented quote blocks get spoken. The two figures in **bold** must
 match what your screen showed when you recorded the clip, so swap them
