@@ -41,6 +41,7 @@ MANIFEST="$CLIPDIR/clips.txt"
 CAPTIONS="$CLIPDIR/captions.txt"
 RENDER="$(dirname "$0")/render-caption.py"
 FADE="${FADE:-0.5}"   # seconds of fade in/out on every clip; FADE=0 disables
+SCALE="${SCALE:-0.8}" # the picture's share of the 1920x1080 frame, centred on black
 WORK="$CLIPDIR/.segments"
 OUT="$CLIPDIR/final.mp4"
 
@@ -81,7 +82,9 @@ while read -r file start end speed _; do
   playdur=$(awk -v a="$e0" -v b="$s0" -v sp="$sp" 'BEGIN { print (a - b) / sp }')
   fadeout=$(awk -v d="$playdur" -v f="$FADE" 'BEGIN { s = d - f; print (s > 0 ? s : 0) }')
 
-  vf="scale=1920:1080:force_original_aspect_ratio=decrease"
+  boxw=$(awk -v s="$SCALE" 'BEGIN { w = int(1920 * s / 2) * 2; print w }')
+  boxh=$(awk -v s="$SCALE" 'BEGIN { h = int(1080 * s / 2) * 2; print h }')
+  vf="scale=$boxw:$boxh:force_original_aspect_ratio=decrease"
   vf="$vf,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,fps=30,format=yuv420p"
   [ "${speed:--}" != "-" ] && vf="$vf,setpts=PTS/$speed"
 
