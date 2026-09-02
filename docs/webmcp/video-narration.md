@@ -28,6 +28,9 @@ before you hit record, then click send within the first second.
 Can you say #news is rising across the fediverse?
 ```
 
+**Caption, added in the edit at 0:00, small, lower third:** `Fediverse
+Hashtag Activity Index · live · ChatGPT's in-app browser`
+
 **Caption, added in the edit at about 0:20:** `check_claim: the site
 referees what the agent may say`
 
@@ -140,3 +143,25 @@ github.com/nhc/fediverse-hashtag
 > result, including the refusals. WebMCP is what lets a website hand an
 > agent not just its data, but the limits of its data. The site is live,
 > and the code is open.
+
+## YouTube description
+
+Paste under the video at upload. Check both links in a private window.
+
+```text
+A live hashtag activity index for the fediverse, entered in the WebMCP
+Challenge. Nobody can count the whole fediverse, so every figure the site
+publishes carries its provenance: which servers contributed, how healthy
+they were, and when it last updated. The site registers six WebMCP tools
+that hand that evidence to an agent in a shape it cannot drop, and one of
+them, check_claim, referees what the agent may say against the same rules
+the site holds itself to. In this demo, the agent is refused a
+fediverse-wide claim, renders a like-for-like comparison on a page the
+person can share, and grades hashtag suggestions by the kind of evidence
+behind them.
+
+Live site: https://fediverse-hashtag-index.neil-charlton.workers.dev
+Code: https://github.com/nhc/fediverse-hashtag
+
+Built for the OpenAI WebMCP Challenge, September 2026.
+```

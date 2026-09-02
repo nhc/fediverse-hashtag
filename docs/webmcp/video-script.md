@@ -147,5 +147,6 @@ Do not cut clip 1. It is the entry.
 - [ ] Uploaded to YouTube as **Public**, not Unlisted.
 - [ ] Title is plain and names the project: "Fediverse Hashtag Activity
       Index: WebMCP demo".
+- [ ] YouTube description pasted from the run sheet, both links checked.
 - [ ] Link opened in a private window to confirm it plays for a stranger.
 - [ ] Video URL pasted into the Devpost draft.
