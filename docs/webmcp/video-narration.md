@@ -2,8 +2,11 @@
 
 Everything needed at record time, in order: what is on screen, the exact
 text to paste into the agent panel, and the narration to read. The captions
-are added in the edit; they are listed here so the whole video lives in one
-document. The production plan and edit notes are in `video-script.md`.
+are burned in automatically by `scripts/stitch-video.sh`, from
+`video/captions.txt`, which is pre-filled with the caption text below; set
+each one's timing there once the picture is locked. Each tool demo's
+caption leads with the exact tool name, so a judge sees the identifier
+they could grep for, while the narration speaks it. The production plan and edit notes are in `video-script.md`.
 Drop the recordings in the repository `video/` folder (gitignored, media
 never committed) and assemble them with `scripts/stitch-video.sh`; the
 steps are in `video/README.md`.
@@ -41,8 +44,8 @@ Compare #pottery and #art
 **Caption, added in the edit at 0:00, small, lower third:** `Fediverse
 Hashtag Activity Index · live · ChatGPT's in-app browser`
 
-**Caption, once the compare page is on screen:** `The agent and the person
-are looking at the same URL`
+**Caption, once the compare page is on screen:** `compare_hashtags · the
+agent and the person are looking at the same URL`
 
 **Read:**
 
@@ -88,7 +91,7 @@ The pulled handles took three attempts before they felt right in the hand.
 Off to the studio sale this weekend if anyone in the area fancies a look.
 ```
 
-**Caption:** `side_effects: queries_registered: 0`
+**Caption:** `evaluate_hashtags · side_effects.queries_registered: 0`
 
 **Read:**
 

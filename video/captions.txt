@@ -4,8 +4,8 @@
 # and speed. Use - as end to hold until the clip ends. Set the times
 # properly once the picture is locked; these are starting guesses.
 clip1.mov  0    5    Fediverse Hashtag Activity Index · live · ChatGPT's in-app browser
-clip1.mov  6    -    The agent and the person are looking at the same URL
+clip1.mov  6    -    compare_hashtags · the agent and the person are looking at the same URL
 clip2.mov  0    -    6 tools · 1 result shape · provenance required on every result, refusals included
-clip3.mov  2    -    side_effects: queries_registered: 0
+clip3.mov  2    -    evaluate_hashtags · side_effects.queries_registered: 0
 clip4.mov  1    6    check_claim: the site referees what the agent may say
 clip6.mov  0    -    fediverse-hashtag-index.neil-charlton.workers.dev|github.com/nhc/fediverse-hashtag
