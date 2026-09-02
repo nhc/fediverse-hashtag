@@ -6,7 +6,8 @@ here and are all gitignored; only this file, `clips.txt` and
 decisions.
 
 1. Record the six clips (see `docs/webmcp/video-narration.md`) and drop
-   them in this folder.
+   them in this folder, named `clip1.mov` to `clip6.mov`: the manifests
+   are whitespace-separated, so no spaces in filenames.
 2. List them in `clips.txt` in playing order, with trims and speed as
    needed. The format is documented in `scripts/stitch-video.sh`.
 3. From the repository root, run `scripts/stitch-video.sh` for a silent

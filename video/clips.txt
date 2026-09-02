@@ -1,7 +1,3 @@
-# filename  start  end  speed   (use - to skip a field; times as seconds or mm:ss)
-# clip1.mov  -      -    -
-# clip2.mov  -      -    -
-# clip3.mov  2.5    14   -
-# clip4.mov  0:04   0:31 1.5
-# clip5.mov  -      -    -
-# clip6.mov  -      -    -
+# filename  start  end  speed
+clip1.mov  -  -  -
+clip2.mov  -  -  -
