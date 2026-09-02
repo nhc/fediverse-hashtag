@@ -1,23 +1,27 @@
 # Demo video: script and production plan
 
-Rewritten Tuesday 1 September 2026 after the organisers' email. Their rules
-that shaped this version: the project must be working on screen in the first
-10 to 15 seconds, no intros or title cards, inspiration stays in the written
-description, nothing typed live, all waiting cut, on-screen text instead of
-spoken explanation where it is faster, and the best material first because
-judges are not required to watch past three minutes.
+Rewritten 1 September 2026 after the organisers' email, reordered
+2 September after a cold read. The organisers' rules that shaped it: the
+project must be working on screen in the first 10 to 15 seconds, no intros
+or title cards, inspiration stays in the written description, nothing typed
+live, all waiting cut, on-screen text instead of spoken explanation where it
+is faster, and the best material first because judges are not required to
+watch past three minutes.
 
-Target 2:20 to 2:30. Spoken script is about 2:18 at a normal pace.
+Target 2:30 to 2:45. The narration, paste text and captions live in
+`video-narration.md`; this document is the design, the edit notes and the
+checklist.
 
 ## Design decisions
 
-- **The refusal opens the video.** `check_claim` is the most novel thing in
-  the entry and it states the whole thesis in one exchange. Hundreds of
-  submissions will show an agent doing a thing; very few will show a site
-  refereeing what the agent may say. If this feels wrong on the first cut,
-  swap clips 1 and 3 and move the framing line to the front.
+- **The comparison opens, the refusal lands late.** The first plan opened
+  on the check_claim refusal for novelty. A cold read on 2 September said it
+  looks like a failed demo, so the order now runs: the clips where the
+  browser navigates and the content visibly changes first, and the refusal
+  at 1:45 as the twist, once the viewer has watched the tools plainly work.
+  That is also where `tools.md` originally placed it.
 - **Three exchanges, no repetition.** Each shows a different capability:
-  refereeing a claim, changing what the person sees, and grading evidence.
+  changing what the person sees, grading evidence, and refereeing a claim.
 - **Framing is one sentence plus on-screen text**, not a spoken essay. The
   problem story lives in the description, where the organisers asked for it.
 - **The script reads the same for your voice or an AI narrator.** Short
@@ -26,103 +30,30 @@ Target 2:20 to 2:30. Spoken script is about 2:18 at a normal pace.
 
 ## Recording order
 
-Record the screen clips first, voice-over last. Two figures in the script
-are quoted from the exchanges (the hour-on-hour author counts in clip 1, and
-the observed figures in clip 4). They will be fresh on your screen when you
-record, so adjust those two sentences to match what the screen shows, then
-record the audio. Nothing in the narration should disagree with the pixels.
+Record the screen clips first, voice-over last. Two figures in the
+narration are quoted from the exchanges (the observed figures in clip 3 and
+the hour-on-hour author counts in clip 4). They will be fresh on your screen
+when you record, so adjust those two sentences to match what the screen
+shows, then record the audio. Nothing in the narration should disagree with
+the pixels.
 
-Record each clip separately so one bad take does not cost the rest.
+Record each clip separately so one bad take does not cost the rest. Clips
+go in the repository `video/` folder; `scripts/stitch-video.sh` trims each
+to the manifest, normalises to 1080p30, concatenates, and lays the
+narration over the top as the only soundtrack.
 
-## Clip list
+## Play order and timings
 
-### Clip 1, 0:00 to 0:34: check_claim, the referee
-
-**Screen:** the live site with the agent panel open. The question is already
-pasted in the input: "Can you say #news is rising across the fediverse?"
-Send is clicked within the first second. The `check_claim` tool call must be
-visible, then the refusal.
-
-**On-screen text by 0:08 (so the refusal cannot be misread as a failure):** `check_claim: the site referees what the agent may say`
-
-> This is a live hashtag activity index for the fediverse, and I have just
-> asked the agent to make a claim the data cannot support. It calls
-> check_claim, one of the site's six WebMCP tools, and the site referees the
-> claim. The fediverse-wide version is blocked, because no server can see the
-> whole network. Scoped to what the index observes, it is blocked as well,
-> because the data says the opposite: 182 authors in the prior hour against
-> 109 in the latest. **[match to screen]** And it hands back the sentence the
-> index will stand behind.
-
-### Clip 2, 0:34 to 0:48: the framing
-
-**Screen:** cut to a tag page with the Coverage panel in shot. Hold still.
-
-**On-screen text:** `6 tools · 1 result shape · provenance required on every result, refusals included`
-
-> Nobody can count the whole fediverse, so every number this site publishes
-> carries its provenance. The WebMCP tools hand that evidence to the agent in
-> a shape it cannot drop on the way to you.
-
-### Clip 3, 0:48 to 1:12: compare_hashtags, the agent changes the page
-
-**Screen:** question already pasted: "Compare #pottery and #art". Tool call
-fires, the browser lands on `/compare?tags=Art,pottery`, sparklines render,
-the not-like-for-like callout is in shot. Cut the navigation wait.
-
-**On-screen text:** `The agent and the person are looking at the same URL`
-
-> Ask for a comparison and the tool does not just return numbers. It takes
-> the browser to a real page with a URL anyone can share, the same page you
-> could reach from the form. Both the agent and the page flag that this is
-> not a like-for-like comparison, because one figure is observed and the
-> other is server-reported.
-
-### Clip 4, 1:12 to 1:44: evaluate_hashtags, graded evidence
-
-**Screen:** the pottery draft pasted in one action, with "which hashtags fit
-this post best?" The reply should show the observed figures for #Art and the
-server-reported label on the niche tags. (This is the exchange verified
-28 Aug, 13:16 UK; re-run it live.)
-
-**On-screen text:** `side_effects: queries_registered: 0`
-
-> The index stores no post content, so it cannot read a draft. The agent
-> proposes candidate tags, because language is what it is good at, and
-> evaluate_hashtags reports the evidence for each one. Hashtag art comes back
-> observed: 385 accounts across 112 servers. **[match to screen]** The niche
-> tags come back server-reported, a different kind of evidence, and labelled
-> as such. The result also reports that no queries were registered, because
-> asking for advice must not change what the index collects.
-
-### Clip 5, 1:44 to 1:56: the surface, on one page
-
-**Screen:** `/webmcp`, scrolled to the six tools and the same-question-twice
-exhibit. No interaction needed; a slow scroll is enough.
-
-> The whole surface is on one page. Slash webmcp lists the six tools and
-> answers the same question with and without them, so you can see exactly
-> what the tools change.
-
-### Clip 6, 1:56 to 2:18: close
-
-**Screen:** back on the home page, or the tag list.
-
-**On-screen text:** the live URL and the repository URL, plain text.
-
-> Everything the agent receives, a person can check on the page. There are
-> six tools with one result shape, and provenance is required on every
-> result, including the refusals. WebMCP is what lets a website hand an agent
-> not just its data, but the limits of its data. The site is live, and the
-> code is open.
+| Time | Clip | What a judge sees |
+|---|---|---|
+| 0:00 | 1. compare_hashtags | Question already pasted, sent in the first second. The browser lands on /compare, sparklines render, the not-like-for-like callout in shot. Orientation caption at 0:00. |
+| 0:33 | 2. framing | A tag page, Coverage panel held still. One spoken sentence; the rest is the on-screen text. |
+| 0:47 | 3. evaluate_hashtags | The pottery draft pasted in one action. Observed against server-reported evidence, and `queries_registered: 0` as a caption. |
+| 1:19 | 4. check_claim | The refusal, now with full context. Both scopes blocked, the counter-evidence quoted, the may_say sentence handed back. |
+| 1:56 | 5. /webmcp surface | A slow scroll: six tools and the same-question-twice exhibit. |
+| 2:08 | 6. close | Home page held still, both URLs as captions. |
 
 ## Edit notes
-
-- `scripts/stitch-video.sh` does the assembly: it trims each clip to a
-  manifest, normalises them to 1080p30, concatenates, and lays the narration
-  over the top as the only soundtrack. The manifest format is in the script
-  header. The clips live in the repository `video/` folder, where a
-  .gitignore keeps all media out of git: only the manifest is tracked.
 
 - Cut every wait: tool spinners, page loads, model thinking. Jump cuts are
   expected; do not smooth them.
@@ -140,10 +71,11 @@ exhibit. No interaction needed; a slow scroll is enough.
 Cut in this order and stop when it fits:
 
 1. Clip 5 entirely (the /webmcp scroll). The description covers it.
-2. The final sentence of clip 3, beginning "Both the agent and the page".
+2. The final sentence of clip 1, beginning "Both the agent and the page".
 3. The framing voice-over in clip 2; keep the shot and the on-screen text.
 
-Do not cut clip 1. It is the entry.
+Do not cut clip 4. The refusal is the point of the entry, and the rules
+reward showing it.
 
 ## Upload checklist
 

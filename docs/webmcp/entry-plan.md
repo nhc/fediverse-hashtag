@@ -50,13 +50,14 @@ page; licence; prior/new-work record; repo pushed (private).
       not covered by this document.
 - [x] Repository flipped to public 31 Aug, 19:40 UK. Anonymous access
       returns 200 and GitHub detects the MIT licence.
-- [ ] Video. Script rewritten 1 Sep in `video-script.md` after the
-      organisers' email: check_claim refusal opens cold at 0:00, three
-      exchanges with no repetition, framing moved to on-screen text, six
-      clips recorded separately, narration recorded last so the two quoted
-      figures match the screen. Works read in Neil's voice or by an AI
-      narrator. Still to do: record, edit, and upload to YouTube as Public,
-      no music, no logos in the thumbnail.
+- [ ] Video. Script in `video-script.md`, run sheet in
+      `video-narration.md`. Reordered 2 Sep after a cold read said the
+      refusal-first cut looked like a failed demo: the comparison (browser
+      navigates, content changes) now opens, the check_claim refusal lands
+      at 1:45 as the twist. Six clips recorded separately into `video/`,
+      stitched with `scripts/stitch-video.sh`, narration recorded last so
+      the two quoted figures match the screen. Still to do: record, edit,
+      and upload to YouTube as Public, no music, no logos in the thumbnail.
 - [x] Text description drafted in `devpost-submission.md`, with Built-with
       tags, links and testing instructions. Check figures before pasting.
       Corrected 1 Sep: it said five tools and omitted `check_claim`. Now six,

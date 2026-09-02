@@ -8,11 +8,16 @@ Drop the recordings in the repository `video/` folder (gitignored, media
 never committed) and assemble them with `scripts/stitch-video.sh`; the
 steps are in `video/README.md`.
 
+Play order, decided 2 September after a cold read of the first plan: the
+clips where the browser navigates and the content changes come first, and
+the refusal arrives late, as the twist, once the viewer has seen the tools
+plainly working.
+
 Only the indented quote blocks get spoken. The two figures in **bold** must
 match what your screen showed when you recorded the clip, so swap them
 before reading. Numbers are written as words so every take reads the same.
 
-The read is about three hundred and forty words, roughly two minutes twenty
+The read is about three hundred and eighty words, roughly two minutes thirty
 at a steady pace. Record the audio continuously after the picture is locked,
 leave a beat of silence at each clip boundary, and if a sentence trips you
 twice, go back and read it again from its start rather than patching
@@ -20,34 +25,34 @@ mid-sentence.
 
 ---
 
-## Clip 1: the refusal
+## Clip 1: the comparison
 
 **On screen:** the live site with the agent panel open. Paste the question
-before you hit record, then click send within the first second.
+before you hit record, click send within the first second, and let the
+browser land on the compare page with the sparklines and the
+not-like-for-like callout in shot.
 
 **Paste:**
 
 ```text
-Can you say #news is rising across the fediverse?
+Compare #pottery and #art
 ```
 
 **Caption, added in the edit at 0:00, small, lower third:** `Fediverse
 Hashtag Activity Index · live · ChatGPT's in-app browser`
 
-**Caption, added in the edit by 0:08, so the refusal cannot be misread as a failure:** `check_claim: the site
-referees what the agent may say`
+**Caption, once the compare page is on screen:** `The agent and the person
+are looking at the same URL`
 
 **Read:**
 
 > This is a live hashtag activity index for the fediverse, and I have just
-> asked the agent whether it can say hashtag news is rising across the
-> fediverse. That is a claim the data cannot support. The agent calls check
-> claim, one of the site's six WebMCP tools, and the site referees the
-> claim. The fediverse-wide version is blocked, because no server can see
-> the whole network. Scoped to what the index observes, it is blocked as
-> well, because the data says the opposite: **one hundred and eighty-two**
-> authors in the prior hour, against **one hundred and nine** in the latest.
-> And it hands back the sentence the index will stand behind.
+> asked the agent to compare two hashtags. It calls compare hashtags, one of
+> the site's six WebMCP tools, and it takes the browser to a real page with
+> a URL anyone can share, the same page you could have reached from the
+> form. Both the agent and the page flag that this is not a like-for-like
+> comparison, because one figure is observed and the other is
+> server-reported.
 
 ## Clip 2: the framing
 
@@ -63,28 +68,7 @@ result, refusals included`
 > carries its provenance. The WebMCP tools hand that evidence to the agent
 > in a shape it cannot drop on the way to you.
 
-## Clip 3: the comparison
-
-**On screen:** paste, send, and let the browser land on the compare page
-with the sparklines and the not-like-for-like callout in shot.
-
-**Paste:**
-
-```text
-Compare #pottery and #art
-```
-
-**Caption:** `The agent and the person are looking at the same URL`
-
-**Read:**
-
-> Ask for a comparison and the tool does not just return numbers. It takes
-> the browser to a real page with a URL anyone can share, the same page you
-> could have reached from the form. Both the agent and the page flag that
-> this is not a like-for-like comparison, because one figure is observed and
-> the other is server-reported.
-
-## Clip 4: the draft
+## Clip 3: the draft
 
 **On screen:** paste the whole block below in one action, then send. The
 original draft from the verified exchange was not kept, so this one is
@@ -116,6 +100,30 @@ Off to the studio sale this weekend if anyone in the area fancies a look.
 > which is a different kind of evidence, and they are labelled as such. The
 > result also reports that no queries were registered, because asking for
 > advice must not change what the index collects.
+
+## Clip 4: the refusal
+
+**On screen:** paste, send, and let the tool call and the refusal show.
+
+**Paste:**
+
+```text
+Can you say #news is rising across the fediverse?
+```
+
+**Caption, early in the clip:** `check_claim: the site referees what the
+agent may say`
+
+**Read:**
+
+> This is the part no other site does. I have asked whether the agent can say
+> hashtag news is rising across the fediverse, a claim the data cannot
+> support. The agent calls check claim, and the site referees the claim.
+> The fediverse-wide version is blocked, because no server can see the
+> whole network. Scoped to what the index observes, it is blocked as well,
+> because the data says the opposite: **one hundred and eighty-two**
+> authors in the prior hour, against **one hundred and nine** in the
+> latest. And it hands back the sentence the index will stand behind.
 
 ## Clip 5: the surface
 
@@ -158,10 +166,9 @@ publishes carries its provenance: which servers contributed, how healthy
 they were, and when it last updated. The site registers six WebMCP tools
 that hand that evidence to an agent in a shape it cannot drop, and one of
 them, check_claim, referees what the agent may say against the same rules
-the site holds itself to. In this demo, the agent is refused a
-fediverse-wide claim, renders a like-for-like comparison on a page the
-person can share, and grades hashtag suggestions by the kind of evidence
-behind them.
+the site holds itself to. In this demo, the agent renders a comparison on
+a page the person can share, grades hashtag suggestions by the kind of
+evidence behind them, and is refused a fediverse-wide claim.
 
 Live site: https://fediverse-hashtag-index.neil-charlton.workers.dev
 Code: https://github.com/nhc/fediverse-hashtag
