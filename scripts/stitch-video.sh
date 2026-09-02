@@ -30,9 +30,9 @@
 # Same filename in clips.txt twice? The captions apply to every use.
 #
 # Clips are normalised to 1920x1080 at 30fps, so recordings of different
-# windows concatenate cleanly. Segment video is kept without its own audio:
-# the narration file, when given, becomes the entire soundtrack, which is
-# how the production plan says the video is built. Output: CLIPDIR/final.mp4
+# windows concatenate cleanly. Without a narration file the clips' own
+# audio is kept (tempo-matched when a clip is sped up); when one is given
+# it replaces the soundtrack entirely. Output: CLIPDIR/final.mp4
 set -euo pipefail
 
 CLIPDIR="${1:-video}"
@@ -100,10 +100,28 @@ while read -r file start end speed _; do
     [ "$ci" -gt 0 ] && echo "  $ci caption(s) burned onto $file"
   fi
 
+  # Keep the clip's own audio (tempo-matched if the clip is sped up); a
+  # clip recorded without sound gets silence so the segments still concat.
+  extra=()
+  if ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 "$src" | grep -q .; then
+    af="aresample=48000,aformat=channel_layouts=stereo"
+    if [ "${speed:--}" != "-" ]; then
+      awk -v sp="$speed" 'BEGIN { exit !(sp >= 0.5 && sp <= 2.0) }' \
+        || { echo "speed $speed outside 0.5-2.0; audio cannot follow" >&2; exit 1; }
+      af="atempo=$speed,$af"
+    fi
+    fc="$fc;[0:a]$af[aout]"
+    amap=(-map "[aout]")
+  else
+    extra=(-f lavfi -i "anullsrc=r=48000:cl=stereo")
+    amap=(-map "$((ci + 1)):a")
+  fi
+
   echo "segment $n: $file (start=${start:--} end=${end:--} speed=${speed:--})"
   ffmpeg -nostdin -hide_banner -loglevel error -y ${seek[@]+"${seek[@]}"} -i "$src" \
-    ${capinputs[@]+"${capinputs[@]}"} \
-    -filter_complex "$fc" -map "[$last]" -an -c:v libx264 -preset medium -crf 18 "$seg"
+    ${capinputs[@]+"${capinputs[@]}"} ${extra[@]+"${extra[@]}"} \
+    -filter_complex "$fc" -map "[$last]" ${amap[@]+"${amap[@]}"} -shortest \
+    -c:v libx264 -preset medium -crf 18 -c:a aac -b:a 160k -ar 48000 "$seg"
   echo "file 'seg$(printf '%02d' "$n").mp4'" >> "$WORK/concat.txt"
 done < "$MANIFEST"
 
@@ -116,8 +134,9 @@ if [ -n "$NARRATION" ]; then
     -map 0:v -map 1:a -c:v copy -c:a aac -b:a 192k "$OUT"
 else
   ffmpeg -nostdin -hide_banner -loglevel error -y \
-    -f concat -safe 0 -i "$WORK/concat.txt" -map 0:v -c:v copy -an "$OUT"
-  echo "note: no narration given, so the output is silent"
+    -f concat -safe 0 -i "$WORK/concat.txt" -map 0 -c copy "$OUT"
+  echo "note: no narration file given, so the clips' own audio is kept;"
+  echo "pass one to replace the soundtrack entirely"
 fi
 
 vdur=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$OUT")

@@ -10,9 +10,12 @@ decisions.
    are whitespace-separated, so no spaces in filenames.
 2. List them in `clips.txt` in playing order, with trims and speed as
    needed. The format is documented in `scripts/stitch-video.sh`.
-3. From the repository root, run `scripts/stitch-video.sh` for a silent
-   cut, and watch `video/final.mp4`. Tighten the trims and repeat.
+3. From the repository root, run `scripts/stitch-video.sh` for a draft
+   cut keeping the clips' own audio, and watch `video/final.mp4`. Tighten
+   the trims and repeat.
    Captions from `captions.txt` are burned in on every run; once the
    picture is locked, set their times against what you see.
-4. Record the narration against the locked cut, save it here, then run
-   `scripts/stitch-video.sh video video/narration.m4a` for the final file.
+4. If you narrated while recording, the draft cut is already the real
+   thing. To use a separately recorded narration instead, save it here and
+   run `scripts/stitch-video.sh video video/narration.m4a`; it replaces
+   the clips' audio entirely.
