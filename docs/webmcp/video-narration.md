@@ -34,7 +34,7 @@ Can you say #news is rising across the fediverse?
 **Caption, added in the edit at 0:00, small, lower third:** `Fediverse
 Hashtag Activity Index · live · ChatGPT's in-app browser`
 
-**Caption, added in the edit at about 0:20:** `check_claim: the site
+**Caption, added in the edit by 0:08, so the refusal cannot be misread as a failure:** `check_claim: the site
 referees what the agent may say`
 
 **Read:**
