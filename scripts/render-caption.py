@@ -11,11 +11,11 @@ from PIL import Image, ImageDraw, ImageFont
 
 out, text = sys.argv[1], sys.argv[2].replace("|", "\n")
 try:
-    font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 28)
+    font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 22)
 except OSError:
-    font = ImageFont.load_default(size=28)
+    font = ImageFont.load_default(size=22)
 
-pad, spacing = 14, 8
+pad, spacing = 12, 7
 probe = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
 box = probe.multiline_textbbox((0, 0), text, font=font, spacing=spacing, align="center")
 w = int(round(box[2] - box[0])) + 2 * pad

@@ -41,7 +41,7 @@ MANIFEST="$CLIPDIR/clips.txt"
 CAPTIONS="$CLIPDIR/captions.txt"
 RENDER="$(dirname "$0")/render-caption.py"
 FADE="${FADE:-0.5}"   # seconds of fade in/out on every clip; FADE=0 disables
-SCALE="${SCALE:-0.8}" # the picture's share of the 1920x1080 frame, centred on black
+SCALE="${SCALE:-1}"   # the picture's share of the 1920x1080 frame, centred on black
 WORK="$CLIPDIR/.segments"
 OUT="$CLIPDIR/final.mp4"
 
