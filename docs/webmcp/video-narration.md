@@ -32,13 +32,16 @@ mid-sentence.
 
 **On screen:** the live site with the agent panel open. Paste the question
 before you hit record, click send within the first second, and let the
-browser land on the compare page with the sparklines and the
-not-like-for-like callout in shot.
+browser land on the compare page with three sparkline rows and the
+mixed-evidence callout in shot. Before recording, check the site's tag
+list: art and photography must currently be tracked (swap in any two
+tracked tags if not), and pottery stays as the untracked one, so the
+comparison is fair for two tags and honestly flagged for the third.
 
 **Paste:**
 
 ```text
-Compare #pottery and #art
+Compare #pottery, #art and #photography
 ```
 
 **Caption, added in the edit at 0:00, small, lower third:** `Fediverse
@@ -50,12 +53,13 @@ agent and the person are looking at the same URL`
 **Read:**
 
 > This is a live hashtag activity index for the fediverse, and I have just
-> asked the agent to compare two hashtags. It calls compare hashtags, one of
-> the site's six WebMCP tools, and it takes the browser to a real page with
-> a URL anyone can share, the same page you could have reached from the
-> form. Both the agent and the page flag that this is not a like-for-like
-> comparison, because one figure is observed and the other is
-> server-reported.
+> asked the agent to compare three hashtags. It calls compare hashtags, one
+> of the site's six WebMCP tools, and it takes the browser to a real page
+> with a URL anyone can share, the same page you could have reached from
+> the form. Two of the tags are observed and genuinely comparable. The
+> third is server-reported, a different kind of evidence, and both the
+> agent and the page say so instead of pretending all three are like for
+> like.
 
 ## Clip 2: the framing
 
