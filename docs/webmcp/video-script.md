@@ -43,7 +43,7 @@ pasted in the input: "Can you say #news is rising across the fediverse?"
 Send is clicked within the first second. The `check_claim` tool call must be
 visible, then the refusal.
 
-**On-screen text at ~0:20:** `check_claim: the site referees what the agent may say`
+**On-screen text by 0:08 (so the refusal cannot be misread as a failure):** `check_claim: the site referees what the agent may say`
 
 > This is a live hashtag activity index for the fediverse, and I have just
 > asked the agent to make a claim the data cannot support. It calls
