@@ -2,7 +2,9 @@
 # Stitch the demo video clips into one YouTube-ready file.
 #
 # Usage:
-#   scripts/stitch-video.sh CLIPDIR [narration.m4a]
+#   scripts/stitch-video.sh [CLIPDIR] [narration.m4a]
+#
+# CLIPDIR defaults to the repository video/ folder.
 #
 # CLIPDIR holds the raw screen recordings and a manifest called clips.txt.
 # Each manifest line is four fields separated by spaces; use - to skip one:
@@ -20,7 +22,7 @@
 # how the production plan says the video is built. Output: CLIPDIR/final.mp4
 set -euo pipefail
 
-CLIPDIR="${1:?usage: stitch-video.sh CLIPDIR [narration.m4a]}"
+CLIPDIR="${1:-video}"
 NARRATION="${2:-}"
 MANIFEST="$CLIPDIR/clips.txt"
 WORK="$CLIPDIR/.segments"

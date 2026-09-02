@@ -127,8 +127,8 @@ Working backwards from use, in this order:
    read-only endpoint pattern the others can reuse.
 7. **Record the video around the five utterances.** The refusal must be in it.
 
-Each step is a commit on the `webmcp` branch, worktree at
-`../fediverse-hashtag-webmcp`, off `build-mvp`.
+Each step is a commit on what was the `webmcp` branch, since
+consolidated into `main` (2 September 2026).
 
 ## When this was built, with evidence
 
@@ -143,10 +143,10 @@ whole argument:
 - **28 August onwards:** everything WebMCP. All five tools, the two read-only
   endpoints (`/api/v1/evaluate`, `/api/v1/trending`), the `/compare` page, the
   `/webmcp` diagnostics page, and every document in `docs/webmcp/`, in
-  individually dated commits on `build-mvp` (first: `73e4e96`, "WebMCP: goals,
+  individually dated commits (first: `73e4e96`, "WebMCP: goals,
   process, five utterances, and the lookup_hashtag schema").
 
-The full dated history is the repository's commit log on `build-mvp`. The
+The full dated history is the repository's commit log on `main`. The
 WebMCP-specific files are `src/webmcp.ts`, `src/suggest.ts`, `src/trending.ts`
 and `docs/webmcp/`; the WebMCP-driven changes to `src/api.ts`, `src/db.ts`,
 `src/index.ts` and `src/ui.ts` are the endpoints, their queries, their routes

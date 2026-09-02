@@ -262,7 +262,8 @@ the tool description tells the agent to prefer `may_say` over its own wording.
 
 ## Build status, 28 August 2026
 
-All tools are built, deployed from `build-mvp`, and registered on every
+All tools are built, deployed (from the branch since consolidated into
+`main`), and registered on every
 page. `evaluate_hashtags`, `trending_hashtags` and `compare_hashtags` are
 verified end to end in both judging browsers (see the notes under each
 utterance). `lookup_hashtag` is verified in ChatGPT's browser on both branches (28 Aug,

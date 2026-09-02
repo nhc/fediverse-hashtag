@@ -1,0 +1,6 @@
+# No media in the repository: raw clips, narration and rendered output all
+# stay local. Only the manifest and the README are tracked.
+*
+!.gitignore
+!README.md
+!clips.txt

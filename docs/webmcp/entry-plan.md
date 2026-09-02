@@ -11,7 +11,9 @@ the rules disagree, the rules win.
 ## Live site
 
 <https://fediverse-hashtag-index.neil-charlton.workers.dev>. Deployed from
-`build-mvp` only. Repository: <https://github.com/nhc/fediverse-hashtag>
+`main` only, which since 2 September is the single branch: `build-mvp`,
+`webmcp` and `visualise-tags` were consolidated into it, fully merged, and
+deleted. Repository: <https://github.com/nhc/fediverse-hashtag>
 (private until submission; must be public by then).
 
 ## Dates, in UK time
@@ -32,7 +34,7 @@ deployment that falls over. Do not plan to use the final day.
 The live to-do list. Update this section rather than the chat. Last updated
 Tuesday 1 September 2026, after the video script was written.
 
-**Built and verified:** five tools, live from `build-mvp`, all verified in
+**Built and verified:** six tools, live from `main`, all verified in
 ChatGPT's in-app browser and Chrome 151; `/webmcp` diagnostics; `/compare`
 page; licence; prior/new-work record; repo pushed (private).
 

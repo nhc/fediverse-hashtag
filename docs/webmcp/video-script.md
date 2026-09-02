@@ -121,7 +121,8 @@ exhibit. No interaction needed; a slow scroll is enough.
 - `scripts/stitch-video.sh` does the assembly: it trims each clip to a
   manifest, normalises them to 1080p30, concatenates, and lays the narration
   over the top as the only soundtrack. The manifest format is in the script
-  header. Keep the raw clips outside the repository.
+  header. The clips live in the repository `video/` folder, where a
+  .gitignore keeps all media out of git: only the manifest is tracked.
 
 - Cut every wait: tool spinners, page loads, model thinking. Jump cuts are
   expected; do not smooth them.
