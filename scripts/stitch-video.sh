@@ -40,6 +40,7 @@ NARRATION="${2:-}"
 MANIFEST="$CLIPDIR/clips.txt"
 CAPTIONS="$CLIPDIR/captions.txt"
 RENDER="$(dirname "$0")/render-caption.py"
+FADE="${FADE:-0.5}"   # seconds of fade in/out on every clip; FADE=0 disables
 WORK="$CLIPDIR/.segments"
 OUT="$CLIPDIR/final.mp4"
 
@@ -72,6 +73,14 @@ while read -r file start end speed _; do
     seek+=(-t "$dur")
   fi
 
+  # The clip's duration as it will play, for placing the fade-out.
+  srcdur=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$src")
+  s0=0; [ "${start:--}" != "-" ] && s0=$(to_seconds "$start")
+  e0="$srcdur"; [ "${end:--}" != "-" ] && e0=$(to_seconds "$end")
+  sp=1; [ "${speed:--}" != "-" ] && sp="$speed"
+  playdur=$(awk -v a="$e0" -v b="$s0" -v sp="$sp" 'BEGIN { print (a - b) / sp }')
+  fadeout=$(awk -v d="$playdur" -v f="$FADE" 'BEGIN { s = d - f; print (s > 0 ? s : 0) }')
+
   vf="scale=1920:1080:force_original_aspect_ratio=decrease"
   vf="$vf,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,fps=30,format=yuv420p"
   [ "${speed:--}" != "-" ] && vf="$vf,setpts=PTS/$speed"
@@ -100,6 +109,11 @@ while read -r file start end speed _; do
     [ "$ci" -gt 0 ] && echo "  $ci caption(s) burned onto $file"
   fi
 
+  if awk -v f="$FADE" 'BEGIN { exit !(f > 0) }'; then
+    fc="$fc;[$last]fade=t=in:st=0:d=$FADE,fade=t=out:st=$fadeout:d=$FADE[vfade]"
+    last="vfade"
+  fi
+
   # Keep the clip's own audio (tempo-matched if the clip is sped up); a
   # clip recorded without sound gets silence so the segments still concat.
   extra=()
@@ -109,6 +123,9 @@ while read -r file start end speed _; do
       awk -v sp="$speed" 'BEGIN { exit !(sp >= 0.5 && sp <= 2.0) }' \
         || { echo "speed $speed outside 0.5-2.0; audio cannot follow" >&2; exit 1; }
       af="atempo=$speed,$af"
+    fi
+    if awk -v f="$FADE" 'BEGIN { exit !(f > 0) }'; then
+      af="$af,afade=t=in:st=0:d=$FADE,afade=t=out:st=$fadeout:d=$FADE"
     fi
     fc="$fc;[0:a]$af[aout]"
     amap=(-map "[aout]")
