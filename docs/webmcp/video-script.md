@@ -30,12 +30,13 @@ checklist.
 
 ## Recording order
 
-Record the screen clips first, voice-over last. Two figures in the
-narration are quoted from the exchanges (the observed figures in clip 3 and
-the hour-on-hour author counts in clip 4). They will be fresh on your screen
-when you record, so adjust those two sentences to match what the screen
-shows, then record the audio. Nothing in the narration should disagree with
-the pixels.
+Record the screen clips first, voice-over last. The narration never asserts
+what a tool result will be: the agent's candidate tags in clip 3 and the
+hour-on-hour author counts in clip 4 change between takes, so those
+sentences are bracketed slots in `video-narration.md`, with the alternatives
+listed under **Read off the screen**. Fill them from the locked picture,
+then record the audio. Nothing in the narration should disagree with the
+pixels.
 
 Record each clip separately so one bad take does not cost the rest. Clips
 go in the repository `video/` folder; `scripts/stitch-video.sh` trims each
@@ -46,12 +47,15 @@ narration over the top as the only soundtrack.
 
 | Time | Clip | What a judge sees |
 |---|---|---|
-| 0:00 | 1. compare_hashtags | Question already pasted, sent in the first second. The browser lands on /compare, sparklines render, the not-like-for-like callout in shot. Orientation caption at 0:00. |
-| 0:33 | 2. framing | A tag page, Coverage panel held still. One spoken sentence; the rest is the on-screen text. |
-| 0:47 | 3. evaluate_hashtags | The pottery draft pasted in one action. Observed against server-reported evidence, and `queries_registered: 0` as a caption. |
-| 1:19 | 4. check_claim | The refusal, now with full context. Both scopes blocked, the counter-evidence quoted, the may_say sentence handed back. |
-| 1:56 | 5. /webmcp surface | A slow scroll: six tools and the same-question-twice exhibit. |
-| 2:08 | 6. close | Home page held still, both URLs as captions. |
+| 0:00 | 1. compare_hashtags (47.9s) | Question already pasted, sent in the first second. The browser lands on /compare, sparklines render, the not-like-for-like callout in shot. Orientation caption at 0:00. |
+| 0:48 | 2. framing (23.6s) | A tag page, Coverage panel held still. One spoken sentence; the rest is the on-screen text. |
+| 1:11 | 3. evaluate_hashtags (24.7s, re-recorded 3 Sep) | The pottery draft pasted in one action. The evidence kinds behind the agent's candidates, and `queries_registered: 0` as a caption. |
+| 1:36 | 4. check_claim (36.6s) | The refusal, now with full context. The fediverse-wide scope blocked, the scoped verdict as the data has it, the may_say sentence handed back. |
+| 2:13 | 5. close (33.1s, file clip6.mov) | Home page held still, both URLs as captions. Ends at 2:46. |
+
+Timings are the recorded clip lengths as of 3 September, played whole; total
+165.9s, 14s inside the limit. The /webmcp scroll (the old clip 5) was dropped
+on 3 September per the list below.
 
 ## Edit notes
 
@@ -71,6 +75,7 @@ narration over the top as the only soundtrack.
 Cut in this order and stop when it fits:
 
 1. Clip 5 entirely (the /webmcp scroll). The description covers it.
+   Done, 3 September.
 2. The final sentence of clip 1, beginning "Both the agent and the page".
 3. The framing voice-over in clip 2; keep the shot and the on-screen text.
 

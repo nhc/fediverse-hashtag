@@ -1,3 +1,9 @@
 # filename  start  end  speed
+# Whole clips, untrimmed, in play order. Clip 5 (the /webmcp scroll) was
+# dropped on 3 Sep to fit the 3:00 limit; the Devpost description covers it.
+# The close keeps its recorded filename, clip6.mov.
 clip1.mov  -  -  -
 clip2.mov  -  -  -
+clip3.mov  -  -  -
+clip4.mov  -  -  -
+clip6.mov  -  -  -

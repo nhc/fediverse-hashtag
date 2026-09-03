@@ -82,10 +82,24 @@ while read -r file start end speed _; do
   playdur=$(awk -v a="$e0" -v b="$s0" -v sp="$sp" 'BEGIN { print (a - b) / sp }')
   fadeout=$(awk -v d="$playdur" -v f="$FADE" 'BEGIN { s = d - f; print (s > 0 ? s : 0) }')
 
+  # Screen recorders emit video frames only when the picture changes, so a
+  # clip held still can carry a video stream several seconds shorter than
+  # its audio; -shortest below would then cut the clip at the last frame and
+  # lose the tail of the recording. Hold the last frame to the audio's end.
+  hasaudio=0
+  ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 "$src" | grep -q . && hasaudio=1
+  vpad=""
+  if [ "$hasaudio" = 1 ]; then
+    vdur=$(ffprobe -v error -select_streams v -show_entries stream=duration -of csv=p=0 "$src")
+    adur=$(ffprobe -v error -select_streams a -show_entries stream=duration -of csv=p=0 "$src")
+    gap=$(awk -v a="${adur:-0}" -v v="${vdur:-0}" 'BEGIN { g = a - v; print (g > 0 ? g + 0.5 : 0) }')
+    awk -v g="$gap" 'BEGIN { exit !(g > 0) }' && vpad=",tpad=stop_mode=clone:stop_duration=$gap"
+  fi
+
   boxw=$(awk -v s="$SCALE" 'BEGIN { w = int(1920 * s / 2) * 2; print w }')
   boxh=$(awk -v s="$SCALE" 'BEGIN { h = int(1080 * s / 2) * 2; print h }')
   vf="scale=$boxw:$boxh:force_original_aspect_ratio=decrease"
-  vf="$vf,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,fps=30,format=yuv420p"
+  vf="$vf,pad=1920:1080:(ow-iw)/2:(oh-ih)/2${vpad},fps=30,format=yuv420p"
   [ "${speed:--}" != "-" ] && vf="$vf,setpts=PTS/$speed"
 
   # Captions become transparent PNGs (this ffmpeg build has no drawtext)
@@ -120,7 +134,7 @@ while read -r file start end speed _; do
   # Keep the clip's own audio (tempo-matched if the clip is sped up); a
   # clip recorded without sound gets silence so the segments still concat.
   extra=()
-  if ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 "$src" | grep -q .; then
+  if [ "$hasaudio" = 1 ]; then
     af="aresample=48000,aformat=channel_layouts=stereo"
     if [ "${speed:--}" != "-" ]; then
       awk -v sp="$speed" 'BEGIN { exit !(sp >= 0.5 && sp <= 2.0) }' \

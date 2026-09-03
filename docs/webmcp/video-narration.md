@@ -16,11 +16,18 @@ clips where the browser navigates and the content changes come first, and
 the refusal arrives late, as the twist, once the viewer has seen the tools
 plainly working.
 
-Only the indented quote blocks get spoken. The two figures in **bold** must
-match what your screen showed when you recorded the clip, so swap them
-before reading. Numbers are written as words so every take reads the same.
+Only the indented quote blocks get spoken. The Read blocks describe what
+each tool does and how to read its result; they never state what the result
+will be, because the agent's candidates and the live data change between
+takes, and a narration that asserts an outcome the screen does not show is
+worse than no narration. Anything in [square brackets] is read off the
+screen from your take: fill it in after the picture is locked and before
+you record the audio, and write numbers as words so every take reads the
+same. Where a clip can land more than one way, the alternatives are listed
+under **Read off the screen**; pick the one that matches the take and drop
+the rest.
 
-The read is about three hundred and eighty words, roughly two minutes thirty
+The read is about three hundred and sixty words, roughly two minutes twenty
 at a steady pace. Record the audio continuously after the picture is locked,
 leave a beat of silence at each clip boundary, and if a sentence trips you
 twice, go back and read it again from its start rather than patching
@@ -56,10 +63,15 @@ agent and the person are looking at the same URL`
 > asked the agent to compare three hashtags. It calls compare hashtags, one
 > of the site's six WebMCP tools, and it takes the browser to a real page
 > with a URL anyone can share, the same page you could have reached from
-> the form. Two of the tags are observed and genuinely comparable. The
-> third is server-reported, a different kind of evidence, and both the
-> agent and the page say so instead of pretending all three are like for
-> like.
+> the form. Every tag on that page is labelled with the kind of evidence
+> behind it, and where the kinds differ, both the agent and the page say so
+> instead of pretending the tags are like for like.
+
+**Read off the screen**, appended to the block above if the take shows it
+plainly and the pacing allows; otherwise leave the block as it stands:
+
+> [Number] of the tags are observed and genuinely comparable. [The other]
+> is server-reported, a different kind of evidence.
 
 ## Clip 2: the framing
 
@@ -79,10 +91,11 @@ result, refusals included`
 
 **On screen:** paste the whole block below in one action, then send. The
 original draft from the verified exchange was not kept, so this one is
-written to produce the same shape of answer: observed figures for #Art and
-server-reported evidence for the niche tags. If the agent's candidates
-differ a little, that is fine; the narration only depends on the two kinds
-of evidence appearing.
+written so the agent's candidates are likely to span more than one kind of
+evidence. Which tags it proposes, and which of them come back observed,
+server-reported or untracked, is decided by the agent and the live data at
+record time, not by this sheet. Take the clip, then write what the screen
+shows into the bracketed slots below.
 
 **Paste:**
 
@@ -101,12 +114,24 @@ Off to the studio sale this weekend if anyone in the area fancies a look.
 
 > The index stores no post content, so it cannot read a draft. The agent
 > proposes candidate tags, because language is what it is good at, and
-> evaluate hashtags reports the evidence for each one. Hashtag art comes
-> back observed: **three hundred and eighty-five** accounts across **one
-> hundred and twelve** servers. The niche tags come back server-reported,
-> which is a different kind of evidence, and they are labelled as such. The
-> result also reports that no queries were registered, because asking for
-> advice must not change what the index collects.
+> evaluate hashtags reports the evidence behind each one, labelled by kind,
+> so a server's self-report is never dressed up as an observed count.
+> [Evidence sentence, from the list below.] The result also reports that
+> no queries were registered, because asking for advice must not change
+> what the index collects.
+
+**Read off the screen**, one of these in place of the bracketed sentence:
+
+> Hashtag [tag] comes back observed: [number] accounts across [number]
+> servers. [Tag] and [tag] come back server-reported, a different kind of
+> evidence, and are labelled as such.
+
+> Hashtag [tag] and hashtag [tag] show recent use in the index, and the
+> rest are untracked there, which the result states as an absence of
+> evidence, not as evidence the tags are unused.
+
+> None of the candidates comes back observed. Every one is server-reported
+> or untracked, and each is labelled as such.
 
 ## Clip 4: the refusal
 
@@ -124,43 +149,51 @@ agent may say`
 **Read:**
 
 > This is the part no other site does. I have asked whether the agent can say
-> hashtag news is rising across the fediverse, a claim the data cannot
-> support. The agent calls check claim, and the site referees the claim.
-> The fediverse-wide version is blocked, because no server can see the
-> whole network. Scoped to what the index observes, it is blocked as well,
-> because the data says the opposite: **one hundred and eighty-two**
-> authors in the prior hour, against **one hundred and nine** in the
-> latest. And it hands back the sentence the index will stand behind.
+> hashtag news is rising across the fediverse. The agent calls check claim,
+> and the site referees the claim against the same rules it holds itself
+> to. The fediverse-wide version is blocked, because no server can see the
+> whole network. [Scoped verdict, from the list below.] And it hands back
+> the sentence the index will stand behind.
 
-## Clip 5: the surface
+The fediverse-wide refusal is a rule, so it is the same on every take. The
+scoped verdict depends on the last two hours of data, so read it off the
+screen:
 
-**On screen:** the /webmcp page, a slow scroll down the six tools and the
-same-question-twice exhibit. Nothing to paste.
+**Read off the screen**, one of these in place of the bracketed sentence:
 
-**Read:**
+> Scoped to what the index observes, it is blocked as well, because the
+> data says the opposite: [number] authors in the prior hour, against
+> [number] in the latest.
 
-> The whole surface is on one page. Slash webmcp lists the six tools and
-> answers the same question with and without them, so you can see exactly
-> what the tools change.
+> Scoped to what the index observes, it is allowed, but only as far as the
+> data goes: [number] authors in the prior hour, against [number] in the
+> latest, on the servers the index can see.
 
-## Clip 6: the close
+## Clip 5: the close
+
+Recorded as `clip6.mov`; the filename stays so the manifests and the
+recording match. The /webmcp scroll that was clip 5 was dropped on 3
+September to fit the three-minute limit; its one essential sentence is folded
+into this read, and the Devpost description and testing instructions cover the
+page itself.
 
 **On screen:** the home page or the tag list, held still.
 
 **Caption:** the live URL and the repository URL, plain text:
 
 ```text
-fediverse-hashtag-index.neil-charlton.workers.dev
-github.com/nhc/fediverse-hashtag
+https://fediverse-hashtag-index.neil-charlton.workers.dev
+https://github.com/nhc/fediverse-hashtag
 ```
 
 **Read:**
 
 > Everything the agent receives, a person can check on the page. There are
 > six tools with one result shape, and provenance is required on every
-> result, including the refusals. WebMCP is what lets a website hand an
-> agent not just its data, but the limits of its data. The site is live,
-> and the code is open.
+> result, including the refusals. The whole surface is listed at slash
+> webmcp, which also answers the same question with and without the tools.
+> WebMCP is what lets a website hand an agent not just its data, but the
+> limits of its data. The site is live, and the code is open.
 
 ## YouTube description
 

@@ -32,7 +32,7 @@ deployment that falls over. Do not plan to use the final day.
 ## Outstanding, kept current
 
 The live to-do list. Update this section rather than the chat. Last updated
-Tuesday 1 September 2026, after the video script was written.
+Thursday 3 September 2026, after the video was published.
 
 **Built and verified:** six tools, live from `main`, all verified in
 ChatGPT's in-app browser and Chrome 151; `/webmcp` diagnostics; `/compare`
@@ -50,14 +50,11 @@ page; licence; prior/new-work record; repo pushed (private).
       not covered by this document.
 - [x] Repository flipped to public 31 Aug, 19:40 UK. Anonymous access
       returns 200 and GitHub detects the MIT licence.
-- [ ] Video. Script in `video-script.md`, run sheet in
-      `video-narration.md`. Reordered 2 Sep after a cold read said the
-      refusal-first cut looked like a failed demo: the comparison (browser
-      navigates, content changes) now opens, the check_claim refusal lands
-      at 1:45 as the twist. Six clips recorded separately into `video/`,
-      stitched with `scripts/stitch-video.sh`, narration recorded last so
-      the two quoted figures match the screen. Still to do: record, edit,
-      and upload to YouTube as Public, no music, no logos in the thumbnail.
+- [x] Video. Published 3 Sep, 08:30 UK, as Public, no music, thumbnail is
+      the site alone: <https://youtu.be/3z7fvUdrNRM>. Runs 2:46. Five clips
+      with the clips' own audio (clip 5, the /webmcp scroll, dropped to fit
+      the limit); script in `video-script.md`, run sheet in
+      `video-narration.md`, stitched with `scripts/stitch-video.sh`.
 - [x] Text description drafted in `devpost-submission.md`, with Built-with
       tags, links and testing instructions. Check figures before pasting.
       Corrected 1 Sep: it said five tools and omitted `check_claim`. Now six,
