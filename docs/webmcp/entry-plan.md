@@ -46,8 +46,9 @@ page; licence; prior/new-work record; repo pushed (private).
       script exits silently (28 Aug, 15:50 UK). Safari not checked, by choice.
 
 **Entry logistics still open (Neil)**
-- [ ] Register on Devpost and save a draft submission. Note any form fields
-      not covered by this document.
+- [x] Registered on Devpost and submitted 3 Sep. One field not covered by
+      this document: "Which agent(s) or client(s) did you test your WebMCP
+      tools with?" Answered from the verification record in README.md.
 - [x] Repository flipped to public 31 Aug, 19:40 UK. Anonymous access
       returns 200 and GitHub detects the MIT licence.
 - [x] Video. Published 3 Sep, 08:30 UK, as Public, no music, thumbnail is
@@ -74,7 +75,8 @@ page; licence; prior/new-work record; repo pushed (private).
       19:35 (comparison open on the page; "trust the comparison, don't treat
       them as fediverse-wide totals"; 25 vs 4 posts per author read as
       syndication). Still wanted: tools-on-a-tag-page.
-- [ ] Submit by Wednesday 2 September, 9 pm UK. Confirm status is "submitted".
+- [x] Submitted Thursday 3 September 2026, about 08:45 UK. Status confirmed
+      as "submitted". Edits stay open until 9 pm UK; after that it locks.
 
 **Raising the score (agreed 31 Aug)**
 - [x] The same-question-twice exhibit and expected behaviour per tool, on
